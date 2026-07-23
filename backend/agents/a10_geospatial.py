@@ -85,10 +85,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
-    a = (
-        math.sin(dphi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    )
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
 
 
@@ -345,8 +342,10 @@ class GeospatialAgent:
                       AND (%(mode)s::text IS NULL OR mode = %(mode)s::text)
                     """,
                     {
-                        "lat_lo": latitude - dlat, "lat_hi": latitude + dlat,
-                        "lon_lo": longitude - dlon, "lon_hi": longitude + dlon,
+                        "lat_lo": latitude - dlat,
+                        "lat_hi": latitude + dlat,
+                        "lon_lo": longitude - dlon,
+                        "lon_hi": longitude + dlon,
                         "mode": mode,
                     },
                 )
@@ -377,8 +376,10 @@ class GeospatialAgent:
                     LIMIT 2000
                     """,
                     {
-                        "lat_lo": latitude - dlat, "lat_hi": latitude + dlat,
-                        "lon_lo": longitude - dlon, "lon_hi": longitude + dlon,
+                        "lat_lo": latitude - dlat,
+                        "lat_hi": latitude + dlat,
+                        "lon_lo": longitude - dlon,
+                        "lon_hi": longitude + dlon,
                         "mode": mode,
                     },
                 )
@@ -396,9 +397,7 @@ class GeospatialAgent:
                     )
 
         for place in candidates:
-            place.distance_km = haversine_km(
-                latitude, longitude, place.latitude, place.longitude
-            )
+            place.distance_km = haversine_km(latitude, longitude, place.latitude, place.longitude)
 
         nearby = sorted(
             (p for p in candidates if p.distance_km is not None and p.distance_km <= max_km),
@@ -425,8 +424,7 @@ class GeospatialAgent:
         result.origin = origin
         if origin.kind == "landmark":
             result.caveats.append(
-                f"{origin.name} was resolved from a public geographic reference, "
-                "not from RTA data."
+                f"{origin.name} was resolved from a public geographic reference, not from RTA data."
             )
         return result
 
@@ -560,8 +558,10 @@ class GeospatialAgent:
                 LIMIT 400
                 """,
                 (
-                    place.latitude - dlat, place.latitude + dlat,
-                    place.longitude - dlon, place.longitude + dlon,
+                    place.latitude - dlat,
+                    place.latitude + dlat,
+                    place.longitude - dlon,
+                    place.longitude + dlon,
                 ),
             )
             return {

@@ -1,7 +1,7 @@
 """Phase 3 entrypoint — build the star schema and load it into Postgres.
 
-    python -m backend.ingestion.run_gold
-    python -m backend.ingestion.run_gold --build-only   # skip the database
+python -m backend.ingestion.run_gold
+python -m backend.ingestion.run_gold --build-only   # skip the database
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         log.error("gold.gate_failed", failed_queries=failures)
         return 1
 
-    print(f"\n  PHASE 3 GATE — 10/10 canonical queries returned results ✓\n")
+    print("\n  PHASE 3 GATE — 10/10 canonical queries returned results ✓\n")
     return 0
 
 

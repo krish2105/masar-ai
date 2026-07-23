@@ -18,7 +18,6 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # Enumerations
 # =============================================================================
@@ -47,11 +46,11 @@ class ToolClass(StrEnum):
 
 
 class EvidenceType(StrEnum):
-    DOCUMENT = "document"       # chunk from the curated corpus
-    SQL_RESULT = "sql_result"   # rows from the star schema
-    API_RESULT = "api_result"   # Dubai Pulse gateway response
-    GEO_RESULT = "geo_result"   # computed distances / catchment
-    CALC_RESULT = "calc_result" # deterministic fare or toll arithmetic
+    DOCUMENT = "document"  # chunk from the curated corpus
+    SQL_RESULT = "sql_result"  # rows from the star schema
+    API_RESULT = "api_result"  # Dubai Pulse gateway response
+    GEO_RESULT = "geo_result"  # computed distances / catchment
+    CALC_RESULT = "calc_result"  # deterministic fare or toll arithmetic
 
 
 class Confidence(StrEnum):
@@ -102,7 +101,7 @@ class Source(BaseModel):
     without the capture date would misrepresent its currency.
     """
 
-    id: str                       # "S1", "S2", …
+    id: str  # "S1", "S2", …
     type: EvidenceType
     dataset_or_doc: str
     source_url: str

@@ -18,10 +18,11 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import psycopg
 
@@ -82,7 +83,9 @@ def agent_label(agent_id: str, lang: str = "en") -> str:
 class Tracer:
     """Collects hops for one turn, then persists them."""
 
-    def __init__(self, session_id: str, turn_id: str, trace_dir: Path, dsn: str | None = None) -> None:
+    def __init__(
+        self, session_id: str, turn_id: str, trace_dir: Path, dsn: str | None = None
+    ) -> None:
         self.session_id = session_id
         self.turn_id = turn_id
         self.trace_dir = trace_dir
@@ -143,7 +146,7 @@ class Tracer:
         error: str | None = None
         try:
             yield context
-        except Exception as exc:  # noqa: BLE001 — recorded, then re-raised
+        except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"[:400]
             raise
         finally:
@@ -157,8 +160,11 @@ class Tracer:
                 tokens_in=context.get("tokens_in", 0),
                 tokens_out=context.get("tokens_out", 0),
                 error=error,
-                **{k: v for k, v in {**metadata, **context}.items()
-                   if k not in {"decision", "model", "provider", "tokens_in", "tokens_out"}},
+                **{
+                    k: v
+                    for k, v in {**metadata, **context}.items()
+                    if k not in {"decision", "model", "provider", "tokens_in", "tokens_out"}
+                },
             )
 
     # ------------------------------------------------------------ persist --
@@ -187,9 +193,7 @@ class Tracer:
             "tokens_in": sum(h.tokens_in for h in self.hops),
             "tokens_out": sum(h.tokens_out for h in self.hops),
             "cost_estimate_usd": round(sum(h.cost_estimate_usd for h in self.hops), 6),
-            "errors": [
-                {"agent_id": h.agent_id, "error": h.error} for h in self.hops if h.error
-            ],
+            "errors": [{"agent_id": h.agent_id, "error": h.error} for h in self.hops if h.error],
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -216,7 +220,7 @@ class Tracer:
                         + "\n"
                     )
             return path
-        except Exception as exc:  # noqa: BLE001 — never break a turn over a trace
+        except Exception as exc:
             log.warning("trace.jsonl_failed", error=f"{type(exc).__name__}: {exc}")
             return None
 
@@ -237,17 +241,26 @@ class Tracer:
                             ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
                             """,
                             (
-                                self.session_id, self.turn_id, index, hop.agent_id,
-                                hop.agent_name, hop.latency_ms, hop.model_used,
-                                hop.provider, hop.tokens_in, hop.tokens_out,
-                                hop.cost_estimate_usd, hop.decision, hop.cycle,
+                                self.session_id,
+                                self.turn_id,
+                                index,
+                                hop.agent_id,
+                                hop.agent_name,
+                                hop.latency_ms,
+                                hop.model_used,
+                                hop.provider,
+                                hop.tokens_in,
+                                hop.tokens_out,
+                                hop.cost_estimate_usd,
+                                hop.decision,
+                                hop.cycle,
                                 hop.error,
                                 json.dumps(hop.metadata, ensure_ascii=False, default=str),
                             ),
                         )
                 conn.commit()
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("trace.postgres_failed", error=f"{type(exc).__name__}: {exc}")
             return False
 
@@ -270,7 +283,7 @@ def load_trace(dsn: str, turn_id: str) -> dict[str, Any] | None:
                 (turn_id,),
             )
             rows = cur.fetchall()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("trace.load_failed", error=f"{type(exc).__name__}: {exc}")
         return None
 
@@ -279,11 +292,20 @@ def load_trace(dsn: str, turn_id: str) -> dict[str, Any] | None:
 
     hops = [
         {
-            "hop_index": r[0], "agent_id": r[1], "agent_name": r[2],
-            "timestamp": r[3].isoformat() if r[3] else None, "latency_ms": r[4],
-            "model_used": r[5], "provider": r[6], "tokens_in": r[7],
-            "tokens_out": r[8], "cost_estimate_usd": r[9], "decision": r[10],
-            "cycle": r[11], "error": r[12], "metadata": r[13] or {},
+            "hop_index": r[0],
+            "agent_id": r[1],
+            "agent_name": r[2],
+            "timestamp": r[3].isoformat() if r[3] else None,
+            "latency_ms": r[4],
+            "model_used": r[5],
+            "provider": r[6],
+            "tokens_in": r[7],
+            "tokens_out": r[8],
+            "cost_estimate_usd": r[9],
+            "decision": r[10],
+            "cycle": r[11],
+            "error": r[12],
+            "metadata": r[13] or {},
         }
         for r in rows
     ]

@@ -131,8 +131,14 @@ class SynthesisAgent:
             )
             sources.append(source)
 
-            marker = "CALCULATED — quote exactly, do not recompute" if item.evidence_type is EvidenceType.CALC_RESULT else str(item.evidence_type)
-            captured = f" (captured {item.source.captured_at[:10]})" if item.source.captured_at else ""
+            marker = (
+                "CALCULATED — quote exactly, do not recompute"
+                if item.evidence_type is EvidenceType.CALC_RESULT
+                else str(item.evidence_type)
+            )
+            captured = (
+                f" (captured {item.source.captured_at[:10]})" if item.source.captured_at else ""
+            )
             blocks.append(
                 f"[S{index}] {marker} · {item.source.dataset_or_doc}{captured}\n{item.content[:1400]}"
             )
@@ -218,10 +224,8 @@ class SynthesisAgent:
                 "provider was available. Keep it concise and strictly grounded."
             )
 
-        user_content = (
-            f"QUESTION\n{question}\n\n"
-            f"EVIDENCE\n{evidence_block}\n\n"
-            + ("INSTRUCTIONS\n" + "\n".join(f"- {i}" for i in instructions) if instructions else "")
+        user_content = f"QUESTION\n{question}\n\nEVIDENCE\n{evidence_block}\n\n" + (
+            "INSTRUCTIONS\n" + "\n".join(f"- {i}" for i in instructions) if instructions else ""
         )
 
         try:
@@ -234,14 +238,17 @@ class SynthesisAgent:
             )
             answer = completion.text.strip()
             provider = completion.provider
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("synthesis.failed", error=f"{type(exc).__name__}: {exc}")
             return SynthesisResult(
                 answer=self._extractive_fallback(evidence, sources, arabic),
                 citations=sources[:5],
                 confidence=Confidence.LOW,
                 language=response_language,
-                caveats=[*(caveats or []), "Answer composition failed; showing retrieved evidence."],
+                caveats=[
+                    *(caveats or []),
+                    "Answer composition failed; showing retrieved evidence.",
+                ],
             )
 
         answer, cited, removed = self.validate_citations(answer, sources)
@@ -288,12 +295,8 @@ class SynthesisAgent:
         )
 
     @staticmethod
-    def _extractive_fallback(
-        evidence: list[Evidence], sources: list[Source], arabic: bool
-    ) -> str:
-        header = (
-            "استناداً إلى الأدلة المسترجعة:" if arabic else "Based on the retrieved evidence:"
-        )
+    def _extractive_fallback(evidence: list[Evidence], sources: list[Source], arabic: bool) -> str:
+        header = "استناداً إلى الأدلة المسترجعة:" if arabic else "Based on the retrieved evidence:"
         lines = [header, ""]
         for source, item in zip(sources[:5], evidence[:5], strict=False):
             snippet = item.content.strip().replace("\n", " ")[:280]

@@ -94,7 +94,9 @@ def _vector_literal(vector) -> str:
 def main(argv: list[str] | None = None) -> int:
     configure_logging()
     parser = argparse.ArgumentParser(description="Masar AI — build hybrid search indexes")
-    parser.add_argument("--rebuild-corpus", action="store_true", help="regenerate corpus markdown first")
+    parser.add_argument(
+        "--rebuild-corpus", action="store_true", help="regenerate corpus markdown first"
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     args = parser.parse_args(argv)
 
@@ -106,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         builder = CorpusBuilder(
             settings.gold_dir, settings.bronze_dir, settings.dq_report_dir, settings.corpus_dir
         )
-        log.info("index.corpus_rebuilt", **{k: v for k, v in builder.build_all().items()})
+        log.info("index.corpus_rebuilt", **builder.build_all())
 
     # ---- gather ------------------------------------------------------------
     chunks = chunk_corpus(settings.corpus_dir)

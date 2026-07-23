@@ -95,13 +95,40 @@ def _coverage_score(question: str, evidence: list[Evidence]) -> tuple[float, str
         return 0.0, "no evidence retrieved"
 
     stopwords = {
-        "the", "a", "an", "is", "are", "was", "were", "and", "or", "of", "to",
-        "in", "on", "for", "from", "how", "what", "which", "who", "when", "where",
-        "much", "many", "do", "does", "i", "my", "me", "it", "at", "by", "with",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "and",
+        "or",
+        "of",
+        "to",
+        "in",
+        "on",
+        "for",
+        "from",
+        "how",
+        "what",
+        "which",
+        "who",
+        "when",
+        "where",
+        "much",
+        "many",
+        "do",
+        "does",
+        "i",
+        "my",
+        "me",
+        "it",
+        "at",
+        "by",
+        "with",
     }
-    terms = {
-        w for w in re.findall(r"\b\w{3,}\b", question.lower()) if w not in stopwords
-    }
+    terms = {w for w in re.findall(r"\b\w{3,}\b", question.lower()) if w not in stopwords}
     if not terms:
         return 0.6, "question carried no distinctive terms"
 
@@ -120,8 +147,7 @@ def _specificity_score(evidence: list[Evidence]) -> tuple[float, str]:
         return 0.0, "no evidence"
     with_numbers = sum(1 for e in evidence if _NUMBER.search(e.content))
     has_computed = any(
-        e.evidence_type in (EvidenceType.CALC_RESULT, EvidenceType.SQL_RESULT)
-        for e in evidence
+        e.evidence_type in (EvidenceType.CALC_RESULT, EvidenceType.SQL_RESULT) for e in evidence
     )
     ratio = with_numbers / len(evidence)
     score = min(1.0, ratio + (0.3 if has_computed else 0.0))
@@ -201,7 +227,9 @@ class GraderAgent:
                     "named stations or routes were retrieved."
                 )
             if recency < self.threshold:
-                gaps.append(f"Evidence may be too old for a time-sensitive question: {recency_detail}.")
+                gaps.append(
+                    f"Evidence may be too old for a time-sensitive question: {recency_detail}."
+                )
             if authority < self.threshold:
                 gaps.append(
                     "Evidence is documentation only — no database rows or computed "
@@ -231,9 +259,7 @@ class GraderAgent:
             },
         )
 
-    async def run(
-        self, question: str, evidence: list[Evidence], *, cycle: int = 0
-    ) -> GradeResult:
+    async def run(self, question: str, evidence: list[Evidence], *, cycle: int = 0) -> GradeResult:
         baseline = self.grade_deterministic(question, evidence, cycle)
 
         # No evidence is unambiguously insufficient; asking a model wastes a call.
@@ -262,7 +288,7 @@ class GraderAgent:
                     },
                 ],
             )
-        except Exception as exc:  # noqa: BLE001 — deterministic scores stand
+        except Exception as exc:
             log.warning("grader.model_failed", error=f"{type(exc).__name__}: {exc}")
             return baseline
 
@@ -277,9 +303,14 @@ class GraderAgent:
         # catches semantic gaps keyword overlap misses — so the conservative
         # combination is stricter than either alone.
         coverage = min(axis("coverage", baseline.report.coverage), baseline.report.coverage)
-        specificity = min(axis("specificity", baseline.report.specificity), baseline.report.specificity)
+        specificity = min(
+            axis("specificity", baseline.report.specificity), baseline.report.specificity
+        )
         recency = min(axis("recency", baseline.report.recency), baseline.report.recency)
-        authority = min(axis("source_authority", baseline.report.source_authority), baseline.report.source_authority)
+        authority = min(
+            axis("source_authority", baseline.report.source_authority),
+            baseline.report.source_authority,
+        )
 
         gaps = [str(g)[:300] for g in (payload.get("gaps") or []) if str(g).strip()]
         gaps = list(dict.fromkeys([*gaps, *baseline.report.gaps]))[:6]
@@ -293,7 +324,9 @@ class GraderAgent:
         sufficient = all(v >= self.threshold for v in scores.values())
         if not sufficient and not gaps:
             weakest = min(scores, key=lambda k: scores[k])
-            gaps = [f"Evidence scored low on {weakest} ({scores[weakest]:.2f}); needs stronger support."]
+            gaps = [
+                f"Evidence scored low on {weakest} ({scores[weakest]:.2f}); needs stronger support."
+            ]
 
         report = GradeReport(
             coverage=round(coverage, 3),

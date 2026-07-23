@@ -138,7 +138,7 @@ def _split_sections(body: str) -> list[_Section]:
 
     sections: list[_Section] = []
 
-    if (preamble := body[: matches[0].start()].strip()):
+    if preamble := body[: matches[0].start()].strip():
         sections.append(_Section(heading_path="", text=preamble))
 
     stack: list[tuple[int, str]] = []
@@ -153,16 +153,12 @@ def _split_sections(body: str) -> list[_Section]:
         end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
         content = body[match.end() : end].strip()
         if content:
-            sections.append(
-                _Section(heading_path=" › ".join(h for _, h in stack), text=content)
-            )
+            sections.append(_Section(heading_path=" › ".join(h for _, h in stack), text=content))
 
     return sections
 
 
-def _split_long_text(
-    text: str, max_tokens: int, overlap_tokens: int
-) -> list[str]:
+def _split_long_text(text: str, max_tokens: int, overlap_tokens: int) -> list[str]:
     """Window an over-long section, preferring paragraph then sentence breaks."""
     if estimate_tokens(text) <= max_tokens:
         return [text]

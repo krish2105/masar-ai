@@ -186,11 +186,9 @@ class LLMRouter:
                     timeout=timeout,
                     json_mode=json_mode,
                 )
-            except Exception as exc:  # noqa: BLE001 — any failure moves to the next provider
+            except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
-                attempts.append(
-                    {"provider": provider, "model": model, "error": message[:200]}
-                )
+                attempts.append({"provider": provider, "model": model, "error": message[:200]})
                 if "429" in message or "rate" in message.lower():
                     await self.limiter.penalise(provider)
                 log.warning(
@@ -266,9 +264,7 @@ class LLMRouter:
                     }
                 )
 
-            completion = await self.complete(
-                task_class, local_messages, json_mode=True, **kwargs
-            )
+            completion = await self.complete(task_class, local_messages, json_mode=True, **kwargs)
             try:
                 return _extract_json(completion.text), completion
             except ValueError as exc:

@@ -80,7 +80,7 @@ class RateLimiter:
                     self.redis_url, socket_connect_timeout=2, decode_responses=True
                 )
                 await self._client.ping()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.warning(
                     "rate_limiter.degraded",
                     error=f"{type(exc).__name__}: {exc}",
@@ -109,7 +109,7 @@ class RateLimiter:
         minute_key, day_key = self._keys(provider)
         try:
             minute_count, day_count = await client.mget(minute_key, day_key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("rate_limiter.read_failed", error=str(exc)[:100])
             return BucketState(provider=provider, allowed=True, reason="limiter error")
 
@@ -152,7 +152,7 @@ class RateLimiter:
                 pipe.incrby(f"{day_key}:tok", tokens)
                 pipe.expire(f"{day_key}:tok", 172800)
             await pipe.execute()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("rate_limiter.record_failed", error=str(exc)[:100])
 
     async def penalise(self, provider: str, *, seconds: int = 60) -> None:
@@ -167,7 +167,7 @@ class RateLimiter:
         try:
             await client.setex(f"masar:rl:{provider}:penalty", seconds, "1")
             log.warning("rate_limiter.penalised", provider=provider, seconds=seconds)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     async def is_penalised(self, provider: str) -> bool:
@@ -176,7 +176,7 @@ class RateLimiter:
             return False
         try:
             return bool(await client.exists(f"masar:rl:{provider}:penalty"))
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def usage_report(self, providers: list[str]) -> dict[str, dict[str, int]]:
@@ -193,7 +193,7 @@ class RateLimiter:
                     "rpm_used": int(minute_count or 0),
                     "rpd_used": int(day_count or 0),
                 }
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
         return report
 

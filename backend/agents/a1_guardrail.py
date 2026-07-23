@@ -47,9 +47,18 @@ class GuardrailResult:
 # --------------------------------------------------------------- patterns --
 
 _INJECTION = [
-    (r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)", "injection.ignore_instructions"),
-    (r"disregard\s+(all\s+)?(previous|prior|your)\s+(instructions?|rules?|guidelines?)", "injection.disregard"),
-    (r"(reveal|show|print|repeat|output)\s+(me\s+)?(your\s+)?(system\s+)?(prompt|instructions)", "injection.extract_prompt"),
+    (
+        r"ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)",
+        "injection.ignore_instructions",
+    ),
+    (
+        r"disregard\s+(all\s+)?(previous|prior|your)\s+(instructions?|rules?|guidelines?)",
+        "injection.disregard",
+    ),
+    (
+        r"(reveal|show|print|repeat|output)\s+(me\s+)?(your\s+)?(system\s+)?(prompt|instructions)",
+        "injection.extract_prompt",
+    ),
     (r"you\s+are\s+now\s+(a|an|in)\b", "injection.role_override"),
     (r"\b(developer|admin|god|dan)\s+mode\b", "injection.mode_override"),
     (r"pretend\s+(you\s+are|to\s+be)\b", "injection.pretend"),
@@ -66,23 +75,35 @@ _SQL_WRITE = [
 _PII = [
     (r"\b(phone|mobile|email|address|passport|emirates\s*id|eid)\s+(of|for)\s+\w+", "pii.lookup"),
     (r"\bwho\s+(is|owns)\s+(the\s+)?(driver|passenger|owner)\b", "pii.identify_person"),
-    (r"\b(personal|private)\s+(details?|information|data)\s+(of|about|for)\b", "pii.personal_details"),
+    (
+        r"\b(personal|private)\s+(details?|information|data)\s+(of|about|for)\b",
+        "pii.personal_details",
+    ),
     (r"\b\d{3}-?\d{4}-?\d{7}-?\d\b", "pii.emirates_id_number"),
 ]
 
 _TRANSACTIONAL = [
     (r"\b(top\s*up|recharge|reload)\s+(my\s+)?(nol|card|balance)", "transaction.topup"),
     (r"\b(pay|settle|clear)\s+(my\s+)?(fine|ticket|salik|toll|fee)", "transaction.payment"),
-    (r"\b(book|reserve|buy|purchase)\s+(me\s+)?(a\s+)?(taxi|ticket|seat|pass)", "transaction.booking"),
+    (
+        r"\b(book|reserve|buy|purchase)\s+(me\s+)?(a\s+)?(taxi|ticket|seat|pass)",
+        "transaction.booking",
+    ),
     (r"\b(cancel|refund)\s+(my\s+)?(booking|ticket|subscription)", "transaction.cancel"),
     (r"\b(register|renew)\s+(my\s+)?(vehicle|licen[cs]e)", "transaction.registration"),
 ]
 
 # Not blocked — answered honestly. This is the honesty rule in code.
 _REALTIME = [
-    (r"\b(where\s+is|track|live\s+location|current\s+position)\b.*\b(bus|metro|tram|taxi|route)\b", "realtime.vehicle_position"),
+    (
+        r"\b(where\s+is|track|live\s+location|current\s+position)\b.*\b(bus|metro|tram|taxi|route)\b",
+        "realtime.vehicle_position",
+    ),
     (r"\b(next|when\s+is\s+the\s+next)\s+(bus|metro|tram|train)\b", "realtime.next_departure"),
-    (r"\b(delay|disruption|breakdown|service\s+status)\b.*\b(today|now|currently|right\s+now)\b", "realtime.disruption"),
+    (
+        r"\b(delay|disruption|breakdown|service\s+status)\b.*\b(today|now|currently|right\s+now)\b",
+        "realtime.disruption",
+    ),
     (r"\b(real[\s-]?time|live)\s+(data|feed|position|arrival|tracking)\b", "realtime.generic"),
     (r"\bhow\s+long\s+(will\s+it\s+take|does\s+it\s+take)\b", "realtime.duration"),
 ]
@@ -228,7 +249,9 @@ class GuardrailAgent:
         # No rule fired and no transport vocabulary present — genuinely ambiguous.
         if not _TRANSPORT_TERMS.search(sanitized):
             return GuardrailResult(
-                safe=True, verdict="escalate", sanitized=sanitized,
+                safe=True,
+                verdict="escalate",
+                sanitized=sanitized,
                 reason="no transport terms detected",
             )
 
@@ -277,7 +300,7 @@ class GuardrailAgent:
                 in_scope=payload.get("in_scope"),
                 provider=completion.provider,
             )
-        except Exception as exc:  # noqa: BLE001 — fail open
+        except Exception as exc:
             log.warning("guardrail.escalation_failed", error=f"{type(exc).__name__}: {exc}")
             result.verdict = "allow"
 

@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "B008",    # FastAPI Depends() in defaults is idiomatic
+    "RUF001",  # ambiguous unicode: this codebase is deliberately bilingual
+    "RUF002",
+    "RUF003",
+    "SIM108",  # ternaries are not always clearer than if/else
+    "SIM102",  # nested ifs read as guard-then-condition; flattening obscures intent
+    "SIM117",  # nested `with` keeps connection and cursor lifetimes visually distinct
+    "UP046",   # PEP 695 generics: deferred, typing.Generic is clearer to more readers
+    "UP047",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["E731", "S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true

@@ -141,7 +141,7 @@ def nol_fare(zones: int, card_type: CardType = "silver") -> Calculation:
     Decimal('5.00')
     >>> nol_fare(2, "gold").total
     Decimal('10.00')
-    >>> nol_fare(7).total          # capped at the 3-zone band
+    >>> nol_fare(7).total  # capped at the 3-zone band
     Decimal('7.50')
     """
     fares = load_fares()
@@ -176,7 +176,10 @@ def nol_fare(zones: int, card_type: CardType = "silver") -> Calculation:
         kind="nol_fare",
         total=total,
         breakdown=[
-            {"label": f"Base fare, {banded} zone{'s' if banded > 1 else ''}", "amount": str(_money(base))},
+            {
+                "label": f"Base fare, {banded} zone{'s' if banded > 1 else ''}",
+                "amount": str(_money(base)),
+            },
             {"label": f"{card['label_en']} multiplier", "amount": f"× {multiplier}"},
             {"label": "Single trip fare", "amount": str(_money(total))},
         ],
@@ -209,7 +212,7 @@ def monthly_commute_cost(
 ) -> Calculation:
     """Monthly public-transport commute cost.
 
-    >>> monthly_commute_cost(2).total     # 5.00 × 2 trips × 22 days
+    >>> monthly_commute_cost(2).total  # 5.00 × 2 trips × 22 days
     Decimal('220.00')
     """
     fares = load_fares()
@@ -276,12 +279,16 @@ def salik_cost(
 ) -> Calculation:
     """Monthly Salik toll cost.
 
-    >>> salik_cost(2).total       # 4.00 × 2 × 22
+    >>> salik_cost(2).total  # 4.00 × 2 × 22
     Decimal('176.00')
     """
     fares = load_fares()
     salik = fares["salik"]
-    days = working_days if working_days is not None else int(fares["commute_defaults"]["working_days_per_month"])
+    days = (
+        working_days
+        if working_days is not None
+        else int(fares["commute_defaults"]["working_days_per_month"])
+    )
 
     if crossings_per_day < 0:
         raise CalculationError(f"crossings_per_day cannot be negative, got {crossings_per_day}")
@@ -296,7 +303,10 @@ def salik_cost(
         total=total,
         breakdown=[
             {"label": "Rate per gate crossing", "amount": str(_money(rate))},
-            {"label": f"× {crossings_per_day} crossings per day", "amount": str(_money(rate * crossings_per_day))},
+            {
+                "label": f"× {crossings_per_day} crossings per day",
+                "amount": str(_money(rate * crossings_per_day)),
+            },
             {"label": f"× {days} working days", "amount": str(_money(total))},
         ],
         assumptions=[
@@ -354,12 +364,14 @@ def drive_vs_transit(
     """
     fares = load_fares()
     driving = fares["driving_assumptions"]
-    days = working_days if working_days is not None else int(fares["commute_defaults"]["working_days_per_month"])
+    days = (
+        working_days
+        if working_days is not None
+        else int(fares["commute_defaults"]["working_days_per_month"])
+    )
 
     if distance_km_one_way <= 0:
-        raise CalculationError(
-            f"distance_km_one_way must be positive, got {distance_km_one_way}"
-        )
+        raise CalculationError(f"distance_km_one_way must be positive, got {distance_km_one_way}")
 
     transit = monthly_commute_cost(zones, card_type, working_days=days)
 
@@ -367,7 +379,9 @@ def drive_vs_transit(
     litres = km_per_month * Decimal(str(driving["fuel_consumption_l_per_100km"])) / Decimal(100)
     fuel = litres * Decimal(str(driving["fuel_price_per_litre"]))
 
-    salik = salik_cost(salik_crossings_per_day, working_days=days) if salik_crossings_per_day else None
+    salik = (
+        salik_cost(salik_crossings_per_day, working_days=days) if salik_crossings_per_day else None
+    )
     salik_total = salik.total if salik else Decimal(0)
 
     parking = Decimal(str(driving["parking_per_day"])) * days if include_parking else Decimal(0)
@@ -380,8 +394,14 @@ def drive_vs_transit(
         {"label": "— Public transport —", "amount": ""},
         {"label": "Monthly nol cost", "amount": str(_money(transit.total))},
         {"label": "— Driving —", "amount": ""},
-        {"label": f"Distance ({distance_km_one_way} km × 2 × {days} days)", "amount": f"{_money(km_per_month)} km"},
-        {"label": f"Fuel ({_money(litres)} L @ AED {driving['fuel_price_per_litre']}/L)", "amount": str(_money(fuel))},
+        {
+            "label": f"Distance ({distance_km_one_way} km × 2 × {days} days)",
+            "amount": f"{_money(km_per_month)} km",
+        },
+        {
+            "label": f"Fuel ({_money(litres)} L @ AED {driving['fuel_price_per_litre']}/L)",
+            "amount": str(_money(fuel)),
+        },
     ]
     if salik:
         breakdown.append({"label": "Salik tolls", "amount": str(_money(salik_total))})

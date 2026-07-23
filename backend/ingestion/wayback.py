@@ -51,8 +51,7 @@ WAYBACK_RAW = "https://web.archive.org/web/{timestamp}id_/{url}"
 HOST_PATTERN = "dubaipulse.gov.ae*"
 
 USER_AGENT = (
-    "MasarAI/0.1 (academic research project; open-data recovery; "
-    "+https://github.com/krish2105)"
+    "MasarAI/0.1 (academic research project; open-data recovery; +https://github.com/krish2105)"
 )
 
 # ``bus_passengers_trips_by_route_monthly_2025-09-20_00-00-00.csv`` → period 2025-09-20
@@ -64,7 +63,7 @@ class ArchivedResource:
     """One recoverable file: the newest capture of one Dubai Pulse resource."""
 
     original_url: str
-    timestamp: str          # CDX capture stamp, YYYYMMDDhhmmss
+    timestamp: str  # CDX capture stamp, YYYYMMDDhhmmss
     filename: str
     mimetype: str
     dataset_uuid: str
@@ -252,9 +251,7 @@ class WaybackClient:
                 # 404 means this capture genuinely is not held; retrying wastes
                 # a request. 429 and 5xx are transient.
                 if response.status_code == 404:
-                    log.warning(
-                        "wayback.download.missing", file=resource.filename, status=404
-                    )
+                    log.warning("wayback.download.missing", file=resource.filename, status=404)
                     return None
                 log.warning(
                     "wayback.download.retry",
@@ -326,16 +323,12 @@ class WaybackClient:
 
                 payload = await self.download(resource)
                 if payload is None:
-                    skipped.append(
-                        {"filename": resource.filename, "reason": "download_failed"}
-                    )
+                    skipped.append({"filename": resource.filename, "reason": "download_failed"})
                 elif _looks_like_csv(payload):
                     results[resource.filename] = payload
                 else:
                     log.warning("wayback.download.not_csv", file=resource.filename)
-                    skipped.append(
-                        {"filename": resource.filename, "reason": "not_csv"}
-                    )
+                    skipped.append({"filename": resource.filename, "reason": "not_csv"})
 
         await asyncio.gather(*(worker(r) for r in resources))
         return results, skipped

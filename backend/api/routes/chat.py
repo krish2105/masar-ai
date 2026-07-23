@@ -20,14 +20,14 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from backend.agents.a14_observability import agent_label
-from backend.config.settings import get_settings
 from backend.graph.builder import MasarGraph, build_agents
 from backend.services.llm_router import get_router
 from backend.services.logging import get_logger
@@ -119,7 +119,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     session_id = request.session_id or str(uuid.uuid4())
     try:
         state, tracer = await graph.run_turn(request.query, session_id=session_id)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.error("chat.turn_failed", error=f"{type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail="The turn failed. See server logs.") from exc
     return _serialise_state(state, tracer)
@@ -131,7 +131,22 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 # Order in which agents are announced, so the UI can lay the rail out before
 # anything runs rather than reflowing as events arrive.
-AGENT_SEQUENCE = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14"]
+AGENT_SEQUENCE = [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "A8",
+    "A9",
+    "A10",
+    "A11",
+    "A12",
+    "A13",
+    "A14",
+]
 
 
 def _event(name: str, payload: dict[str, Any]) -> dict[str, str]:
@@ -169,7 +184,7 @@ async def _stream_turn(request: ChatRequest) -> AsyncIterator[dict[str, str]]:
 
     try:
         state, tracer = await task
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.error("chat.stream_failed", error=f"{type(exc).__name__}: {exc}")
         yield _event("error", {"message": "The turn failed."})
         return

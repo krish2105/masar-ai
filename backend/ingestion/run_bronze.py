@@ -1,10 +1,10 @@
 """Phase 1 entrypoint — recover the dataset catalogue into data/bronze/.
 
-    python -m backend.ingestion.run_bronze                # all datasets
-    python -m backend.ingestion.run_bronze --core         # only the §3.3 twelve
-    python -m backend.ingestion.run_bronze --only metro_stations bus_routes
-    python -m backend.ingestion.run_bronze --refresh-index
-    python -m backend.ingestion.run_bronze --max-files 24 # cap snapshot families
+python -m backend.ingestion.run_bronze                # all datasets
+python -m backend.ingestion.run_bronze --core         # only the §3.3 twelve
+python -m backend.ingestion.run_bronze --only metro_stations bus_routes
+python -m backend.ingestion.run_bronze --refresh-index
+python -m backend.ingestion.run_bronze --max-files 24 # cap snapshot families
 """
 
 from __future__ import annotations
@@ -103,9 +103,7 @@ async def main(argv: list[str] | None = None) -> int:
     # The gate requires every core dataset to land. Supporting datasets may be absent.
     core_ids = {d.id for d in CORE_DATASETS}
     core_failures = [
-        r["dataset_id"]
-        for r in results
-        if r["status"] != "ok" and r["dataset_id"] in core_ids
+        r["dataset_id"] for r in results if r["status"] != "ok" and r["dataset_id"] in core_ids
     ]
     if core_failures:
         log.error("bronze.run.core_missing", datasets=core_failures)

@@ -30,8 +30,8 @@ class Domain(StrEnum):
 class SourceTier(StrEnum):
     """Provenance tier. Surfaced on every row, every citation, every evidence card."""
 
-    ARCHIVE = "archive"      # recovered from Internet Archive snapshots of Dubai Pulse
-    LIVE_API = "live_api"    # fetched from the Dubai Pulse gateway with credentials
+    ARCHIVE = "archive"  # recovered from Internet Archive snapshots of Dubai Pulse
+    LIVE_API = "live_api"  # fetched from the Dubai Pulse gateway with credentials
     SYNTHETIC = "synthetic"  # generated stand-in — always badged in the UI
 
 

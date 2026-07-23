@@ -121,7 +121,7 @@ def check_reference_sql(sql: str, dsn: str) -> str:
             cur.execute(sql)
             rows = cur.fetchmany(5)
         return "ok" if rows else "empty"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         message = str(exc).split("\n")[0][:120]
         return f"incompatible: {message}"
 
@@ -153,9 +153,7 @@ def check_must_not(answer: str, rules: list[str]) -> list[str]:
     return violations
 
 
-async def evaluate_question(
-    graph: MasarGraph, item: dict[str, Any], dsn: str
-) -> QuestionResult:
+async def evaluate_question(graph: MasarGraph, item: dict[str, Any], dsn: str) -> QuestionResult:
     ground_truth = item.get("ground_truth") or {}
     result = QuestionResult(
         id=item["id"],
@@ -165,14 +163,12 @@ async def evaluate_question(
         agents_required=item.get("must_trigger_agents", []),
     )
 
-    result.reference_sql_status = check_reference_sql(
-        ground_truth.get("reference_sql", ""), dsn
-    )
+    result.reference_sql_status = check_reference_sql(ground_truth.get("reference_sql", ""), dsn)
 
     started = time.perf_counter()
     try:
         state, tracer = await graph.run_turn(item["question"])
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         result.error = f"{type(exc).__name__}: {exc}"[:200]
         result.latency_s = time.perf_counter() - started
         return result
@@ -184,9 +180,7 @@ async def evaluate_question(
     result.evidence_count = len(state.get("evidence", []))
     result.confidence = str(state.get("confidence", ""))
     result.agents_used = tracer.summary()["agents_used"]
-    result.agents_missing = [
-        a for a in result.agents_required if a not in result.agents_used
-    ]
+    result.agents_missing = [a for a in result.agents_required if a not in result.agents_used]
 
     citations = state.get("citations", [])
     result.citations = len(citations)
@@ -254,9 +248,7 @@ def summarise(results: list[QuestionResult], golden: dict) -> dict[str, Any]:
         },
         "corrective_loop": {
             "turns_with_replan": sum(1 for r in results if r.replan_cycles > 0),
-            "replan_rate": round(
-                sum(1 for r in results if r.replan_cycles > 0) / len(results), 3
-            ),
+            "replan_rate": round(sum(1 for r in results if r.replan_cycles > 0) / len(results), 3),
             "hit_cycle_cap": sum(1 for r in results if r.replan_cycles >= 2),
         },
         "by_language": by_lang,
@@ -282,14 +274,21 @@ def summarise(results: list[QuestionResult], golden: dict) -> dict[str, Any]:
         "thresholds": THRESHOLDS,
         "results": [
             {
-                "id": r.id, "lang": r.lang, "intent_expected": r.intent_expected,
-                "intent_actual": r.intent_actual, "passed": r.passed,
-                "latency_s": round(r.latency_s, 2), "citations": r.citations,
-                "citation_valid": r.citation_valid, "evidence": r.evidence_count,
-                "replan_cycles": r.replan_cycles, "agents_missing": r.agents_missing,
+                "id": r.id,
+                "lang": r.lang,
+                "intent_expected": r.intent_expected,
+                "intent_actual": r.intent_actual,
+                "passed": r.passed,
+                "latency_s": round(r.latency_s, 2),
+                "citations": r.citations,
+                "citation_valid": r.citation_valid,
+                "evidence": r.evidence_count,
+                "replan_cycles": r.replan_cycles,
+                "agents_missing": r.agents_missing,
                 "must_not_violations": r.must_not_violations,
                 "reference_sql_status": r.reference_sql_status,
-                "confidence": r.confidence, "error": r.error,
+                "confidence": r.confidence,
+                "error": r.error,
             }
             for r in results
         ],
@@ -316,33 +315,45 @@ def print_report(report: dict[str, Any]) -> None:
         print(f"  {name:<26} {value:>8.3f}  {threshold:>10.2f}  {mark}")
 
     p95 = report["latency"]["p95_s"]
-    print(f"  {'p95_latency_s':<26} {p95:>8.2f}  {THRESHOLDS['p95_latency_s']:>10.2f}  "
-          f"{'✓' if p95 <= THRESHOLDS['p95_latency_s'] else '✗'}")
+    print(
+        f"  {'p95_latency_s':<26} {p95:>8.2f}  {THRESHOLDS['p95_latency_s']:>10.2f}  "
+        f"{'✓' if p95 <= THRESHOLDS['p95_latency_s'] else '✗'}"
+    )
     print(f"  {'agent_activation':<26} {metrics['agent_activation']:>8.3f}  {'—':>10}")
-    print(f"  {'must_not_violations':<26} {metrics['must_not_violations']:>8}  {0:>10}  "
-          f"{'✓' if metrics['must_not_violations'] == 0 else '✗'}")
+    print(
+        f"  {'must_not_violations':<26} {metrics['must_not_violations']:>8}  {0:>10}  "
+        f"{'✓' if metrics['must_not_violations'] == 0 else '✗'}"
+    )
     print("  " + "─" * 76)
 
     loop = report["corrective_loop"]
-    print(f"  corrective loop: {loop['turns_with_replan']}/{report['questions_evaluated']} turns "
-          f"re-planned ({loop['replan_rate']:.0%}), {loop['hit_cycle_cap']} hit the cycle cap")
+    print(
+        f"  corrective loop: {loop['turns_with_replan']}/{report['questions_evaluated']} turns "
+        f"re-planned ({loop['replan_rate']:.0%}), {loop['hit_cycle_cap']} hit the cycle cap"
+    )
 
     if report.get("arabic_parity_gap") is not None:
         print(f"  AR/EN pass-rate parity gap: {report['arabic_parity_gap']:.3f}")
 
     print(f"  reference_sql: {report['reference_sql']['status_counts']}")
-    print("\n  Judged metrics (faithfulness, relevancy, precision): "
-          f"{report['judged_metrics']['faithfulness']}")
+    print(
+        "\n  Judged metrics (faithfulness, relevancy, precision): "
+        f"{report['judged_metrics']['faithfulness']}"
+    )
     print()
 
 
 async def main(argv: list[str] | None = None) -> int:
     configure_logging()
     parser = argparse.ArgumentParser(description="Masar AI — golden set evaluation")
-    parser.add_argument("--limit", type=int, default=None, help="evaluate only the first N questions")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="evaluate only the first N questions"
+    )
     parser.add_argument("--lang", choices=["en", "ar"], default=None)
     parser.add_argument("--intent", default=None)
-    parser.add_argument("--sql-only", action="store_true", help="only check reference_sql compatibility")
+    parser.add_argument(
+        "--sql-only", action="store_true", help="only check reference_sql compatibility"
+    )
     args = parser.parse_args(argv)
 
     settings = get_settings()

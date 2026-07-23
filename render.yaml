@@ -1,0 +1,50 @@
+# Masar AI — Render blueprint.
+#
+# NOTE ON SIZING: bge-m3 (~2.1 GB) and bge-reranker-v2-m3 (~1.1 GB) load into
+# the API process. A 512 MB free instance cannot hold them — the service will
+# OOM on the first retrieval, not at boot, which makes it look like a query bug.
+# Use at least a 4 GB plan, or move embedding behind a dedicated service.
+services:
+  - type: web
+    name: masar-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: standard
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: POSTGRES_HOST
+        fromDatabase: { name: masar-db, property: host }
+      - key: POSTGRES_USER
+        fromDatabase: { name: masar-db, property: user }
+      - key: POSTGRES_PASSWORD
+        fromDatabase: { name: masar-db, property: password }
+      - key: POSTGRES_DB
+        fromDatabase: { name: masar-db, property: database }
+      - key: REDIS_URL
+        fromService: { name: masar-redis, type: redis, property: connectionString }
+      # All optional — the service boots without them and reports degraded
+      # capabilities rather than failing.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: redis
+    name: masar-redis
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: masar-db
+    plan: standard
+    postgresMajorVersion: "16"
+    # pgvector must be enabled on the instance, and the database must be
+    # created with a UTF-8 locale — under C, pg_trgm generates no trigrams for
+    # Arabic and every Arabic fuzzy match silently fails.

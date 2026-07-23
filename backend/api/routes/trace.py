@@ -81,7 +81,7 @@ async def list_traces(
                     (limit,),
                 )
             rows = cur.fetchall()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("trace.list_failed", error=f"{type(exc).__name__}: {exc}")
         return {"traces": [], "error": "trace store unavailable"}
 
@@ -107,7 +107,9 @@ async def list_datasets() -> dict[str, Any]:
     manifest_path: Path = settings.bronze_dir / "_manifest.json"
 
     if not manifest_path.exists():
-        raise HTTPException(status_code=404, detail="No ingestion manifest found. Run `make ingest`.")
+        raise HTTPException(
+            status_code=404, detail="No ingestion manifest found. Run `make ingest`."
+        )
 
     run = json.loads(manifest_path.read_text(encoding="utf-8"))
     datasets: list[dict[str, Any]] = []
@@ -203,7 +205,7 @@ async def warehouse_stats() -> dict[str, Any]:
                 stats["non_comparable_periods"] = cur.fetchone()[0]
                 cur.execute("SELECT COUNT(*) FROM doc_chunk")
                 stats["indexed_chunks"] = cur.fetchone()[0]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("stats.failed", error=f"{type(exc).__name__}: {exc}")
         raise HTTPException(status_code=503, detail="Warehouse unavailable") from exc
 
@@ -233,14 +235,20 @@ async def map_stations(mode: str | None = None) -> dict[str, Any]:
                 (mode, mode),
             )
             rows = cur.fetchall()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=503, detail="Warehouse unavailable") from exc
 
     return {
         "stations": [
             {
-                "id": r[0], "name_en": r[1], "name_ar": r[2], "mode": r[3],
-                "line": r[4], "zone": r[5], "lat": float(r[6]), "lon": float(r[7]),
+                "id": r[0],
+                "name_en": r[1],
+                "name_ar": r[2],
+                "mode": r[3],
+                "line": r[4],
+                "zone": r[5],
+                "lat": float(r[6]),
+                "lon": float(r[7]),
             }
             for r in rows
         ]

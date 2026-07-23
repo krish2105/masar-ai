@@ -11,8 +11,13 @@ import pytest
 from backend.services.sql_guard import SqlGuardError, validate
 
 STAR_SCHEMA = {
-    "dim_route", "dim_stop", "dim_station", "dim_date",
-    "fact_ridership_monthly", "fact_modal_split_monthly", "dim_salik_tariff",
+    "dim_route",
+    "dim_stop",
+    "dim_station",
+    "dim_date",
+    "fact_ridership_monthly",
+    "fact_modal_split_monthly",
+    "dim_salik_tariff",
 }
 
 
@@ -120,9 +125,7 @@ def test_simple_select_passes() -> None:
 
 
 def test_existing_limit_is_respected() -> None:
-    result = validate(
-        "SELECT * FROM dim_station LIMIT 10", allowed_tables=STAR_SCHEMA
-    )
+    result = validate("SELECT * FROM dim_station LIMIT 10", allowed_tables=STAR_SCHEMA)
     assert result.limit_applied is False
     assert "LIMIT 10" in result.sql
 
@@ -157,9 +160,7 @@ def test_readonly_cte_passes() -> None:
 
 def test_markdown_fences_are_stripped() -> None:
     """LLMs habitually wrap SQL in code fences; that alone must not fail the query."""
-    result = validate(
-        "```sql\nSELECT zone_id FROM dim_station\n```", allowed_tables=STAR_SCHEMA
-    )
+    result = validate("```sql\nSELECT zone_id FROM dim_station\n```", allowed_tables=STAR_SCHEMA)
     assert "dim_station" in result.tables
 
 

@@ -37,8 +37,14 @@ log = get_logger(__name__)
 SCHEMA_CARD_PATH = Path(__file__).resolve().parents[1] / "config" / "schema_card.md"
 
 ALLOWED_TABLES = {
-    "dim_station", "dim_stop", "dim_route", "dim_date", "dim_salik_tariff",
-    "bridge_route_stop", "fact_ridership_monthly", "fact_modal_split_monthly",
+    "dim_station",
+    "dim_stop",
+    "dim_route",
+    "dim_date",
+    "dim_salik_tariff",
+    "bridge_route_stop",
+    "fact_ridership_monthly",
+    "fact_modal_split_monthly",
 }
 
 STATEMENT_TIMEOUT_MS = 5000
@@ -87,9 +93,7 @@ class SqlResult:
         lines = [" | ".join(columns)]
         for row in self.rows[:max_rows]:
             lines.append(
-                " | ".join(
-                    "" if row.get(c) is None else str(row.get(c))[:60] for c in columns
-                )
+                " | ".join("" if row.get(c) is None else str(row.get(c))[:60] for c in columns)
             )
         if self.row_count > max_rows:
             lines.append(f"… and {self.row_count - max_rows} more rows")
@@ -119,7 +123,7 @@ class TextToSqlAgent:
             # Layer three caught something layers one and two missed.
             log.error("sql.privilege_denied", error=str(exc)[:200])
             return [], "the read-only role refused this statement"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return [], f"{type(exc).__name__}: {exc}"[:300]
 
     # ---------------------------------------------------------------- run --
@@ -144,7 +148,7 @@ class TextToSqlAgent:
             attempt += 1
             try:
                 payload, completion = await self.router.complete_json("sql", messages)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 return SqlResult(
                     success=False,
                     error=f"{type(exc).__name__}: {exc}"[:200],

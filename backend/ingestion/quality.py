@@ -158,7 +158,7 @@ def profile_frame(frame: pl.DataFrame, *, max_samples: int = 3) -> list[ColumnPr
 
         try:
             distinct = int(series.n_unique())
-        except Exception:  # noqa: BLE001 — unhashable dtypes
+        except Exception:
             distinct = -1
 
         samples: list[str] = []
@@ -166,7 +166,7 @@ def profile_frame(frame: pl.DataFrame, *, max_samples: int = 3) -> list[ColumnPr
             non_null = series.drop_nulls()
             for value in non_null.head(max_samples).to_list():
                 samples.append(str(value)[:80])
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
         minimum = maximum = None
@@ -175,7 +175,7 @@ def profile_frame(frame: pl.DataFrame, *, max_samples: int = 3) -> list[ColumnPr
                 lo, hi = series.min(), series.max()
                 minimum = None if lo is None else str(lo)
                 maximum = None if hi is None else str(hi)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         profiles.append(

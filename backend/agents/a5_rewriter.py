@@ -50,13 +50,30 @@ _SYNONYMS: dict[str, list[str]] = {
 }
 
 _ARABIC_TO_ENGLISH = {
-    "مترو": "metro", "حافلة": "bus", "باص": "bus", "ترام": "tram",
-    "تاكسي": "taxi", "محطة": "station", "خط": "route line", "أجرة": "fare",
-    "سعر": "price fare", "نول": "nol card", "سالك": "salik toll",
-    "منطقة": "zone", "ركاب": "passengers ridership", "رحلات": "trips",
-    "أقرب": "nearest", "الأرخص": "cheapest", "الأكثر": "most busiest",
-    "ازدحاما": "busy crowded", "ازدحاماً": "busy crowded", "كم": "how much how many",
-    "أي": "which", "كيف": "how", "دبي": "Dubai", "مواصلات": "transport",
+    "مترو": "metro",
+    "حافلة": "bus",
+    "باص": "bus",
+    "ترام": "tram",
+    "تاكسي": "taxi",
+    "محطة": "station",
+    "خط": "route line",
+    "أجرة": "fare",
+    "سعر": "price fare",
+    "نول": "nol card",
+    "سالك": "salik toll",
+    "منطقة": "zone",
+    "ركاب": "passengers ridership",
+    "رحلات": "trips",
+    "أقرب": "nearest",
+    "الأرخص": "cheapest",
+    "الأكثر": "most busiest",
+    "ازدحاما": "busy crowded",
+    "ازدحاماً": "busy crowded",
+    "كم": "how much how many",
+    "أي": "which",
+    "كيف": "how",
+    "دبي": "Dubai",
+    "مواصلات": "transport",
 }
 
 _HYDE_PROMPT = """Write the paragraph that would perfectly answer this question if it
@@ -164,7 +181,7 @@ class RewriterAgent:
                     result.hyde = hyde
                     result.variants.append(hyde)
                     result.method = f"hyde:{completion.provider}"
-            except Exception as exc:  # noqa: BLE001 — deterministic variants remain
+            except Exception as exc:
                 log.warning("rewriter.hyde_failed", error=f"{type(exc).__name__}: {exc}")
 
         log.info(

@@ -361,11 +361,11 @@ def load_table(conn: psycopg.Connection, table: str, frame: pl.DataFrame) -> int
     buffer.seek(0)
 
     column_list = ", ".join(f'"{c}"' for c in columns)
-    with conn.cursor() as cur:
-        with cur.copy(
-            f'COPY {table} ({column_list}) FROM STDIN WITH (FORMAT csv, NULL \'\')'
-        ) as copy:
-            copy.write(buffer.read())
+    with (
+        conn.cursor() as cur,
+        cur.copy(f"COPY {table} ({column_list}) FROM STDIN WITH (FORMAT csv, NULL '')") as copy,
+    ):
+        copy.write(buffer.read())
 
     log.info("warehouse.loaded", table=table, rows=projected.height, filled_nulls=missing)
     return projected.height
@@ -501,10 +501,8 @@ def verify(dsn: str) -> list[tuple[str, str, int]]:
                 try:
                     cur.execute(sql)
                     rows = cur.fetchall()
-                    preview = "; ".join(
-                        ", ".join(str(v) for v in row) for row in rows[:3]
-                    )
+                    preview = "; ".join(", ".join(str(v) for v in row) for row in rows[:3])
                     results.append((label, preview[:110], len(rows)))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     results.append((label, f"ERROR: {type(exc).__name__}: {exc}"[:110], 0))
     return results

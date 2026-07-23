@@ -26,8 +26,9 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 
@@ -117,9 +118,7 @@ async def _run_retrieve(agents: Agents, task: SubTask, state: MasarState) -> lis
     rewrite = await agents.rewriter.run(query)
     variants = rewrite.all_queries()
 
-    chunks = await asyncio.to_thread(
-        agents.retriever.search_multi, variants, top_k=50
-    )
+    chunks = await asyncio.to_thread(agents.retriever.search_multi, variants, top_k=50)
     result = await asyncio.to_thread(agents.reranker.run, query, chunks, sub_task_id=task.id)
     return result.evidence
 
@@ -146,7 +145,9 @@ async def _run_sql(agents: Agents, task: SubTask, state: MasarState) -> list[Evi
                 dataset_or_doc=", ".join(result.tables) or "star schema",
                 source_url="https://www.dubaipulse.gov.ae/",
                 row_id_or_chunk_id=f"{result.row_count} rows",
-                captured_at=str(result.rows[0].get("captured_at")) if result.rows and "captured_at" in result.rows[0] else None,
+                captured_at=str(result.rows[0].get("captured_at"))
+                if result.rows and "captured_at" in result.rows[0]
+                else None,
                 source_tier="archive",
             ),
             score=0.95,
@@ -181,7 +182,7 @@ async def _run_geo(agents: Agents, task: SubTask, state: MasarState) -> list[Evi
     except GeoError as exc:
         state.setdefault("sub_task_errors", {})[task.id] = str(exc)
         return []
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         state.setdefault("sub_task_errors", {})[task.id] = f"{type(exc).__name__}: {exc}"
         return []
 
@@ -193,7 +194,8 @@ async def _run_geo(agents: Agents, task: SubTask, state: MasarState) -> list[Evi
         )
         if result.interchanges is not None:
             lines.append(
-                "Direct route available" if result.interchanges == 0
+                "Direct route available"
+                if result.interchanges == 0
                 else f"Requires {result.interchanges} interchange(s)"
             )
         if result.shared_routes:
@@ -482,7 +484,9 @@ def make_graph(agents: Agents, tracer: Tracer | None = None):
         elif will_replan:
             decision = f"insufficient → re-plan (cycle {cycle + 1})"
         else:
-            decision = f"insufficient but cycle cap ({max_cycles}) reached → answering with low confidence"
+            decision = (
+                f"insufficient but cycle cap ({max_cycles}) reached → answering with low confidence"
+            )
 
         _trace(
             "A12",
@@ -512,7 +516,7 @@ def make_graph(agents: Agents, tracer: Tracer | None = None):
         _trace(
             "A13",
             latency_ms=(time.perf_counter() - started) * 1000,
-            decision=f"{str(result.confidence)} confidence, {len(result.citations)} citations",
+            decision=f"{result.confidence!s} confidence, {len(result.citations)} citations",
             provider=result.provider,
             unsourced_removed=result.unsourced_removed,
         )
@@ -570,7 +574,8 @@ def make_graph(agents: Agents, tracer: Tracer | None = None):
 
     graph.set_entry_point("guardrail")
     graph.add_conditional_edges(
-        "guardrail", after_guardrail,
+        "guardrail",
+        after_guardrail,
         {"language": "language", "language_blocked": "language_blocked"},
     )
     graph.add_edge("language_blocked", "blocked")
@@ -581,7 +586,8 @@ def make_graph(agents: Agents, tracer: Tracer | None = None):
     graph.add_edge("supervisor", "execute")
     graph.add_edge("execute", "grader")
     graph.add_conditional_edges(
-        "grader", after_grader,
+        "grader",
+        after_grader,
         {"replan": "increment_cycle", "synthesis": "synthesis"},
     )
     graph.add_edge("increment_cycle", "supervisor")  # ← the cycle

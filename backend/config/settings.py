@@ -144,13 +144,19 @@ class Settings(BaseSettings):
         degraded: list[str] = []
 
         if not self.groq_api_key:
-            degraded.append("GROQ_API_KEY absent — fast routing and grading fall back to Cerebras/Ollama")
+            degraded.append(
+                "GROQ_API_KEY absent — fast routing and grading fall back to Cerebras/Ollama"
+            )
         if not self.gemini_api_key:
-            degraded.append("GEMINI_API_KEY absent — planning, Text-to-SQL and Arabic synthesis lose their strongest model")
+            degraded.append(
+                "GEMINI_API_KEY absent — planning, Text-to-SQL and Arabic synthesis lose their strongest model"
+            )
         if not self.cerebras_api_key:
             degraded.append("CEREBRAS_API_KEY absent — one fallback tier removed from every chain")
         if not (self.dubai_pulse_api_key and self.dubai_pulse_api_secret):
-            degraded.append("DUBAI_PULSE credentials absent — A9 serves archived snapshots only (expected default)")
+            degraded.append(
+                "DUBAI_PULSE credentials absent — A9 serves archived snapshots only (expected default)"
+            )
         if not self.langsmith_api_key:
             degraded.append("LANGSMITH_API_KEY absent — tracing writes to local JSONL instead")
 

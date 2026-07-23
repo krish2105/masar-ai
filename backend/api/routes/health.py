@@ -50,7 +50,7 @@ async def _probe_postgres() -> dict[str, Any]:
             "latency_ms": round((time.perf_counter() - started) * 1000, 1),
             "pgvector": has_vector,
         }
-    except Exception as exc:  # noqa: BLE001 — a probe reports, it never raises
+    except Exception as exc:
         return {"status": "unavailable", "error": f"{type(exc).__name__}: {exc}"}
 
 
@@ -69,7 +69,7 @@ async def _probe_redis() -> dict[str, Any]:
             "status": "ok",
             "latency_ms": round((time.perf_counter() - started) * 1000, 1),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "unavailable", "error": f"{type(exc).__name__}: {exc}"}
 
 

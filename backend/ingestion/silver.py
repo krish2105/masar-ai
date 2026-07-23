@@ -76,13 +76,37 @@ def standardise_language_suffix(name: str) -> str:
 # station geometry is silently dropped.
 _LATITUDE_HINTS = ("latitude", "latitiude", "lat", "y_coord", "ycoord")
 _LONGITUDE_HINTS = (
-    "longitude", "longitiude", "lon", "lng", "long", "x_coord", "xcoord",
+    "longitude",
+    "longitiude",
+    "lon",
+    "lng",
+    "long",
+    "x_coord",
+    "xcoord",
 )
 _DATE_HINTS = ("date", "_at", "opening", "closing", "timestamp", "valid_from", "valid_until")
 _NUMERIC_HINTS = (
-    "count", "trips", "passengers", "ridership", "fare", "tariff", "amount",
-    "total", "number", "_num", "qty", "quantity", "speed", "length", "capacity",
-    "distance", "zone_id", "stop_number", "value", "price", "frequency",
+    "count",
+    "trips",
+    "passengers",
+    "ridership",
+    "fare",
+    "tariff",
+    "amount",
+    "total",
+    "number",
+    "_num",
+    "qty",
+    "quantity",
+    "speed",
+    "length",
+    "capacity",
+    "distance",
+    "zone_id",
+    "stop_number",
+    "value",
+    "price",
+    "frequency",
 )
 
 # Numeric-looking identifiers that must stay strings: leading zeros and route
@@ -110,7 +134,9 @@ def _looks_like_date(name: str) -> bool:
 def _read_bronze_files(directory: Path) -> tuple[list[pl.DataFrame], dict, int]:
     """Read every CSV in a bronze partition as strings, tagged with provenance."""
     manifest_path = directory / "_manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    manifest = (
+        json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    )
     by_filename = {f["filename"]: f for f in manifest.get("files", [])}
 
     frames: list[pl.DataFrame] = []
@@ -121,21 +147,19 @@ def _read_bronze_files(directory: Path) -> tuple[list[pl.DataFrame], dict, int]:
         try:
             frame = pl.read_csv(
                 path,
-                infer_schema_length=0,   # everything as Utf8; we control casting
+                infer_schema_length=0,  # everything as Utf8; we control casting
                 truncate_ragged_lines=True,
                 ignore_errors=True,
                 encoding="utf8-lossy",
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("silver.read_failed", file=path.name, error=str(exc)[:160])
             continue
 
         if frame.height == 0:
             continue
 
-        frame = frame.rename(
-            {c: standardise_language_suffix(snake_case(c)) for c in frame.columns}
-        )
+        frame = frame.rename({c: standardise_language_suffix(snake_case(c)) for c in frame.columns})
         schema_signatures.add(tuple(frame.columns))
 
         frame = frame.with_columns(
@@ -247,9 +271,7 @@ def _cast_numerics(frame: pl.DataFrame, report: QualityReport) -> pl.DataFrame:
         if lost:
             # The column really is numeric; these are genuine bad values.
             report.add_coercion_failure(column, lost)
-            log.warning(
-                "silver.coercion_failure", column=column, lost=lost, dtype="Float64"
-            )
+            log.warning("silver.coercion_failure", column=column, lost=lost, dtype="Float64")
     return frame
 
 
@@ -273,7 +295,7 @@ def _cast_dates(frame: pl.DataFrame, report: QualityReport) -> pl.DataFrame:
                 candidate = frame.get_column(column).str.to_datetime(
                     format=fmt, strict=False, time_unit="us"
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
             hits = int(candidate.is_not_null().sum())
             if hits > best_hits:
@@ -338,8 +360,12 @@ def _standardise_geometry(frame: pl.DataFrame, report: QualityReport) -> pl.Data
     is a swapped pair, a projected coordinate or a placeholder — never a real
     Dubai stop. Those rows are quarantined and counted, never silently dropped.
     """
-    lat_columns = [c for c in frame.columns if not c.startswith("_") and _is_geo_column(c, _LATITUDE_HINTS)]
-    lon_columns = [c for c in frame.columns if not c.startswith("_") and _is_geo_column(c, _LONGITUDE_HINTS)]
+    lat_columns = [
+        c for c in frame.columns if not c.startswith("_") and _is_geo_column(c, _LATITUDE_HINTS)
+    ]
+    lon_columns = [
+        c for c in frame.columns if not c.startswith("_") and _is_geo_column(c, _LONGITUDE_HINTS)
+    ]
 
     if not (lat_columns and lon_columns):
         return frame
@@ -360,9 +386,7 @@ def _standardise_geometry(frame: pl.DataFrame, report: QualityReport) -> pl.Data
         frame = frame.rename(renames)
     lat, lon = "latitude", "longitude"
 
-    in_uae = (
-        pl.col(lat).is_between(22.0, 26.5) & pl.col(lon).is_between(51.0, 57.0)
-    )
+    in_uae = pl.col(lat).is_between(22.0, 26.5) & pl.col(lon).is_between(51.0, 57.0)
     has_coords = pl.col(lat).is_not_null() & pl.col(lon).is_not_null()
 
     invalid = frame.filter(has_coords & ~in_uae)
@@ -410,7 +434,9 @@ def _deduplicate(frame: pl.DataFrame, dataset: Dataset, report: QualityReport) -
 # ------------------------------------------------------------------ main ----
 
 
-def transform_dataset(dataset: Dataset, bronze_root: Path, silver_root: Path) -> QualityReport | None:
+def transform_dataset(
+    dataset: Dataset, bronze_root: Path, silver_root: Path
+) -> QualityReport | None:
     """Bronze → Silver for one dataset. Returns None when there is no bronze data."""
     dataset_root = bronze_root / dataset.id
     if not dataset_root.is_dir():

@@ -112,9 +112,7 @@ class LanguageAgent:
             language = "unknown"
             response = "en"
 
-        normalized = (
-            normalise_arabic(display) if has_arabic(display) else display
-        )
+        normalized = normalise_arabic(display) if has_arabic(display) else display
 
         result = LanguageResult(
             language=language,

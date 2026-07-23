@@ -73,7 +73,7 @@ class LiveApiAgent:
                 )
                 response.raise_for_status()
                 payload = response.json()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("api.token_failed", error=f"{type(exc).__name__}: {exc}")
             return None
 
@@ -155,7 +155,7 @@ class LiveApiAgent:
                     )
                 response.raise_for_status()
                 payload = response.json()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("api.fetch_failed", dataset=dataset_slug, error=str(exc)[:200])
             return ApiResult(
                 success=False,
@@ -166,7 +166,9 @@ class LiveApiAgent:
                 latency_ms=(time.perf_counter() - started) * 1000,
             )
 
-        rows = payload if isinstance(payload, list) else payload.get("data", payload.get("result", []))
+        rows = (
+            payload if isinstance(payload, list) else payload.get("data", payload.get("result", []))
+        )
         rows = rows if isinstance(rows, list) else []
 
         log.info("api.fetched", dataset=dataset_slug, rows=len(rows))

@@ -29,8 +29,15 @@ DEFAULT_ROW_LIMIT = 1000
 # query is spelled. Checked against the parsed AST, not the raw string, so
 # comment tricks and whitespace games do not help.
 _FORBIDDEN_NODES: tuple[type[exp.Expression], ...] = (
-    exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter,
-    exp.TruncateTable, exp.Grant, exp.Merge,
+    exp.Insert,
+    exp.Update,
+    exp.Delete,
+    exp.Drop,
+    exp.Create,
+    exp.Alter,
+    exp.TruncateTable,
+    exp.Grant,
+    exp.Merge,
 )
 
 # Belt-and-braces textual denylist. The AST check above is authoritative; this
@@ -94,7 +101,7 @@ def validate(
     # --- layer 2a: multiple statements ------------------------------------
     try:
         statements = sqlglot.parse(text, read="postgres")
-    except Exception as exc:  # noqa: BLE001 — sqlglot raises several types
+    except Exception as exc:
         raise SqlGuardError(f"unparseable SQL: {type(exc).__name__}: {exc}") from exc
 
     statements = [s for s in statements if s is not None]

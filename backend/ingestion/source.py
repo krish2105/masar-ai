@@ -107,9 +107,7 @@ class ArchiveSource:
         cap = dataset.max_files if dataset.max_files is not None else self._max_files
         available = len(resources)
         if cap is not None and available > cap:
-            resources = sorted(
-                resources, key=lambda r: (r.data_period or "", r.timestamp)
-            )[-cap:]
+            resources = sorted(resources, key=lambda r: (r.data_period or "", r.timestamp))[-cap:]
             self.last_cap = {
                 "available": available,
                 "retained": cap,

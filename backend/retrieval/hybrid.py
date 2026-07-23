@@ -213,12 +213,8 @@ class HybridRetriever:
         k: int = DEFAULT_K,
     ) -> list[RetrievedChunk]:
         with psycopg.connect(self.dsn) as conn:
-            dense = self.dense_search(
-                conn, query, lang=lang, category=category, kind=kind
-            )
-            sparse = self.sparse_search(
-                conn, query, lang=lang, category=category, kind=kind
-            )
+            dense = self.dense_search(conn, query, lang=lang, category=category, kind=kind)
+            sparse = self.sparse_search(conn, query, lang=lang, category=category, kind=kind)
 
         dense_scores = {chunk.chunk_id: score for chunk, score in dense}
         sparse_scores = {chunk.chunk_id: score for chunk, score in sparse}
@@ -280,9 +276,7 @@ class HybridRetriever:
         if not ranked:
             return []
 
-        fused = reciprocal_rank_fusion(
-            ranked, key_fn=lambda c: c.chunk_id, top_n=top_k
-        )
+        fused = reciprocal_rank_fusion(ranked, key_fn=lambda c: c.chunk_id, top_n=top_k)
         results = []
         for item in fused:
             chunk = best[str(item.key)]

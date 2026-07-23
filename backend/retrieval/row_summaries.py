@@ -192,9 +192,7 @@ def ridership_summaries(frame: pl.DataFrame, *, top_n: int = 120) -> list[RowSum
     )
 
     excluded = (
-        int(frame.filter(pl.col("scale_anomaly")).height)
-        if "scale_anomaly" in frame.columns
-        else 0
+        int(frame.filter(pl.col("scale_anomaly")).height) if "scale_anomaly" in frame.columns else 0
     )
 
     summaries: list[RowSummary] = []
@@ -247,8 +245,7 @@ def modal_split_summaries(frame: pl.DataFrame) -> list[RowSummary]:
         if total <= 0:
             continue
         breakdown = ", ".join(
-            f"{_clean(r['transport_type'])} {r['trips']:,.0f} trips "
-            f"({r['trips'] / total:.0%})"
+            f"{_clean(r['transport_type'])} {r['trips']:,.0f} trips ({r['trips'] / total:.0%})"
             for r in rows.iter_rows(named=True)
         )
         key = str(date_key)

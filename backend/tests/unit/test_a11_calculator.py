@@ -139,9 +139,7 @@ class TestSalik:
 
 class TestDriveVsTransit:
     def test_arithmetic_is_exact(self) -> None:
-        result = drive_vs_transit(
-            zones=2, distance_km_one_way=20.0, salik_crossings_per_day=2
-        )
+        result = drive_vs_transit(zones=2, distance_km_one_way=20.0, salik_crossings_per_day=2)
         # transit: 5.00 × 2 × 22                      = 220.00
         # km:      20 × 2 × 22                        = 880 km
         # fuel:    880 × 9/100 = 79.2 L × 2.90        = 229.68

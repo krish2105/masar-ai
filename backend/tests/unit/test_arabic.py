@@ -24,10 +24,10 @@ class TestNormalisation:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
-            ("أحمد", "احمد"),          # alef with hamza above
-            ("إمارات", "امارات"),      # alef with hamza below
-            ("آل", "ال"),               # alef with madda
-            ("ٱلله", "الله"),           # alef wasla
+            ("أحمد", "احمد"),  # alef with hamza above
+            ("إمارات", "امارات"),  # alef with hamza below
+            ("آل", "ال"),  # alef with madda
+            ("ٱلله", "الله"),  # alef wasla
         ],
     )
     def test_alef_forms_unify(self, raw: str, expected: str) -> None:

@@ -339,7 +339,9 @@ class CorpusBuilder:
                 continue
             mode_routes = routes.filter(pl.col("mode") == mode)
             mode_stations = (
-                stations.filter(pl.col("mode") == mode) if not stations.is_empty() else pl.DataFrame()
+                stations.filter(pl.col("mode") == mode)
+                if not stations.is_empty()
+                else pl.DataFrame()
             )
             mode_facts = (
                 facts.filter((pl.col("mode") == mode) & ~pl.col("scale_anomaly"))
@@ -395,7 +397,11 @@ class CorpusBuilder:
                 body += ["", "## Routes with the most stops\n"]
                 body += [
                     f"- **{row['route_number']}**"
-                    + (f" — {row['origin_en']} to {row['destination_en']}" if row["origin_en"] else "")
+                    + (
+                        f" — {row['origin_en']} to {row['destination_en']}"
+                        if row["origin_en"]
+                        else ""
+                    )
                     + (f" ({row['stop_count']} stops)" if row["stop_count"] else "")
                     for row in longest.iter_rows(named=True)
                 ]
@@ -438,7 +444,9 @@ class CorpusBuilder:
             "|---|---|---|",
         ]
         for key, card in nol["card_types"].items():
-            en.append(f"| {card['label_en']} ({key}) | ×{card['multiplier']} | {card['card_cost']:.2f} |")
+            en.append(
+                f"| {card['label_en']} ({key}) | ×{card['multiplier']} | {card['card_cost']:.2f} |"
+            )
 
         en += [
             "",
@@ -476,7 +484,7 @@ class CorpusBuilder:
             "# Salik toll\n",
             "Salik is Dubai's automated road toll. A charge applies each time a vehicle "
             "passes a toll gate.\n",
-            f"## Rate held by Masar\n",
+            "## Rate held by Masar\n",
             f"**AED {salik['flat_rate_per_crossing']:.2f} per gate crossing**, effective "
             f"{salik['effective_from']}.\n",
             "This rate is verified against the archived RTA tariff dataset.\n",
@@ -542,7 +550,7 @@ class CorpusBuilder:
                 "historically.\n\n"
                 "Masar never simulates live data. When asked a real-time question it says "
                 "the data is not publicly available and offers the schedule-based "
-                "alternative.\n"
+                "alternative.\n",
             ),
             "limits-data-currency": (
                 "How current is the data?",
@@ -561,7 +569,7 @@ class CorpusBuilder:
                 "those periods are flagged and excluded from trend calculations, and the "
                 "limitation is stated in the answer rather than hidden.\n\n"
                 "Masar is an independent academic project and is not affiliated with, "
-                "endorsed by, or connected to RTA.\n"
+                "endorsed by, or connected to RTA.\n",
             ),
             "limits-journey-planning": (
                 "How journey reasoning works",
@@ -575,7 +583,7 @@ class CorpusBuilder:
                 "a journey would need.\n\n"
                 "It reports **distance and interchange count**. It never invents a journey "
                 "duration, because it has no data from which one could be derived. For an "
-                "actual journey plan with times, use RTA's own S'hail app or rta.ae.\n"
+                "actual journey plan with times, use RTA's own S'hail app or rta.ae.\n",
             ),
             "about-masar": (
                 "What Masar AI is",
@@ -601,7 +609,7 @@ class CorpusBuilder:
                 "numbers in this system.\n"
                 "- Answers are given in the language of the question.\n"
                 "- Where the data cannot support an answer, Masar says so rather than "
-                "guessing.\n"
+                "guessing.\n",
             ),
         }
 

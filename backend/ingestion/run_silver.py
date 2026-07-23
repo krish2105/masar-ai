@@ -1,7 +1,7 @@
 """Phase 2 entrypoint — bronze → silver, with a data quality report per dataset.
 
-    python -m backend.ingestion.run_silver
-    python -m backend.ingestion.run_silver --only metro_stations
+python -m backend.ingestion.run_silver
+python -m backend.ingestion.run_silver --only metro_stations
 """
 
 from __future__ import annotations

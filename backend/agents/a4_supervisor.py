@@ -136,38 +136,106 @@ class SupervisorAgent:
         tasks: list[SubTask] = []
 
         if intent in (Intent.SERVICE_INFO, Intent.OUT_OF_SCOPE):
-            tasks.append(SubTask(id="t1", description="Search documentation", tool=ToolClass.RETRIEVE, params={"query": query}))
+            tasks.append(
+                SubTask(
+                    id="t1",
+                    description="Search documentation",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                )
+            )
 
         elif intent == Intent.FARE_COST:
             tasks += [
-                SubTask(id="t1", description="Find fare rules and zones", tool=ToolClass.RETRIEVE, params={"query": query}),
-                SubTask(id="t2", description="Look up station fare zones", tool=ToolClass.SQL, params={"question": f"fare zones for stations mentioned in: {query}"}),
-                SubTask(id="t3", description="Compute the fare", tool=ToolClass.CALC, depends_on=["t2"], params={"operation": "monthly_commute", "zones": 2}),
+                SubTask(
+                    id="t1",
+                    description="Find fare rules and zones",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                ),
+                SubTask(
+                    id="t2",
+                    description="Look up station fare zones",
+                    tool=ToolClass.SQL,
+                    params={"question": f"fare zones for stations mentioned in: {query}"},
+                ),
+                SubTask(
+                    id="t3",
+                    description="Compute the fare",
+                    tool=ToolClass.CALC,
+                    depends_on=["t2"],
+                    params={"operation": "monthly_commute", "zones": 2},
+                ),
             ]
 
         elif intent == Intent.NETWORK_ANALYTICS:
             tasks += [
-                SubTask(id="t1", description="Query ridership facts", tool=ToolClass.SQL, params={"question": query}),
-                SubTask(id="t2", description="Search network context", tool=ToolClass.RETRIEVE, params={"query": query}),
+                SubTask(
+                    id="t1",
+                    description="Query ridership facts",
+                    tool=ToolClass.SQL,
+                    params={"question": query},
+                ),
+                SubTask(
+                    id="t2",
+                    description="Search network context",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                ),
             ]
 
         elif intent == Intent.GEOSPATIAL:
             tasks += [
-                SubTask(id="t1", description="Find nearby stops and stations", tool=ToolClass.GEO, params={"operation": "nearest", "place": query}),
-                SubTask(id="t2", description="Search station reference", tool=ToolClass.RETRIEVE, params={"query": query}),
+                SubTask(
+                    id="t1",
+                    description="Find nearby stops and stations",
+                    tool=ToolClass.GEO,
+                    params={"operation": "nearest", "place": query},
+                ),
+                SubTask(
+                    id="t2",
+                    description="Search station reference",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                ),
             ]
 
         elif intent == Intent.JOURNEY_PLANNING:
             tasks += [
-                SubTask(id="t1", description="Find route connections", tool=ToolClass.SQL, params={"question": query}),
-                SubTask(id="t2", description="Search route documentation", tool=ToolClass.RETRIEVE, params={"query": query}),
+                SubTask(
+                    id="t1",
+                    description="Find route connections",
+                    tool=ToolClass.SQL,
+                    params={"question": query},
+                ),
+                SubTask(
+                    id="t2",
+                    description="Search route documentation",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                ),
             ]
 
         else:  # MULTI_HOP
             tasks += [
-                SubTask(id="t1", description="Search documentation", tool=ToolClass.RETRIEVE, params={"query": query}),
-                SubTask(id="t2", description="Query the star schema", tool=ToolClass.SQL, params={"question": query}),
-                SubTask(id="t3", description="Geospatial context", tool=ToolClass.GEO, params={"operation": "nearest", "place": query}),
+                SubTask(
+                    id="t1",
+                    description="Search documentation",
+                    tool=ToolClass.RETRIEVE,
+                    params={"query": query},
+                ),
+                SubTask(
+                    id="t2",
+                    description="Query the star schema",
+                    tool=ToolClass.SQL,
+                    params={"question": query},
+                ),
+                SubTask(
+                    id="t3",
+                    description="Geospatial context",
+                    tool=ToolClass.GEO,
+                    params={"operation": "nearest", "place": query},
+                ),
             ]
 
         # A re-plan must differ from what already failed; widen the search.
@@ -200,9 +268,7 @@ class SupervisorAgent:
         grader_reasoning: str = "",
     ) -> PlanResult:
         if self.router is None:
-            return PlanResult(
-                plan=self.fallback_plan(query, intent, cycle), method="fallback"
-            )
+            return PlanResult(plan=self.fallback_plan(query, intent, cycle), method="fallback")
 
         messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
         if cycle > 0 and previous_plan is not None:
@@ -212,7 +278,11 @@ class SupervisorAgent:
                     "content": _REPLAN_PROMPT.format(
                         previous=json.dumps(
                             [
-                                {"tool": t.tool.value, "description": t.description, "params": t.params}
+                                {
+                                    "tool": t.tool.value,
+                                    "description": t.description,
+                                    "params": t.params,
+                                }
                                 for t in previous_plan.sub_tasks
                             ],
                             indent=2,
@@ -223,13 +293,11 @@ class SupervisorAgent:
                     ),
                 }
             )
-        messages.append(
-            {"role": "user", "content": f"Intent: {intent}\nQuestion: {query}"}
-        )
+        messages.append({"role": "user", "content": f"Intent: {intent}\nQuestion: {query}"})
 
         try:
             payload, completion = await self.router.complete_json("planning", messages)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("supervisor.model_failed", error=f"{type(exc).__name__}: {exc}")
             return PlanResult(
                 plan=self.fallback_plan(query, intent, cycle), method="fallback_after_error"
@@ -341,7 +409,9 @@ def execution_order(plan: Plan) -> list[list[SubTask]]:
         ready = [
             task
             for task in remaining.values()
-            if all(dep in done or dep not in {t.id for t in plan.sub_tasks} for dep in task.depends_on)
+            if all(
+                dep in done or dep not in {t.id for t in plan.sub_tasks} for dep in task.depends_on
+            )
         ]
         if not ready:
             log.warning(

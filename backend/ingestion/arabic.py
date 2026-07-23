@@ -22,33 +22,30 @@ import unicodedata
 # --- character classes -------------------------------------------------------
 
 # Alef variants: hamza above/below, madda, wasla → bare alef
-_ALEF_VARIANTS = str.maketrans({
-    "أ": "ا",  # أ  alef with hamza above
-    "إ": "ا",  # إ  alef with hamza below
-    "آ": "ا",  # آ  alef with madda
-    "ٱ": "ا",  # ٱ  alef wasla
-    "ٲ": "ا",
-    "ٳ": "ا",
-})
+_ALEF_VARIANTS = str.maketrans(
+    {
+        "أ": "ا",  # أ  alef with hamza above
+        "إ": "ا",  # إ  alef with hamza below
+        "آ": "ا",  # آ  alef with madda
+        "ٱ": "ا",  # ٱ  alef wasla
+        "ٲ": "ا",
+        "ٳ": "ا",
+    }
+)
 
 # Orthographic variants that carry no distinction in transit names
-_LETTER_FOLDING = str.maketrans({
-    "ى": "ي",  # ى alef maksura → ي yeh
-    "ة": "ه",  # ة teh marbuta  → ه heh
-    "ؤ": "و",  # ؤ waw with hamza  → و
-    "ئ": "ي",  # ئ yeh with hamza  → ي
-    "ـ": "",        # ـ tatweel (pure decoration)
-})
+_LETTER_FOLDING = str.maketrans(
+    {
+        "ى": "ي",  # ى alef maksura → ي yeh
+        "ة": "ه",  # ة teh marbuta  → ه heh
+        "ؤ": "و",  # ؤ waw with hamza  → و
+        "ئ": "ي",  # ئ yeh with hamza  → ي
+        "ـ": "",  # ـ tatweel (pure decoration)
+    }
+)
 
 # Harakat / tanween / superscript alef / quranic marks
-_DIACRITICS = re.compile(
-    "["
-    "ؐ-ؚ"
-    "ً-ٟ"
-    "ٰ"
-    "ۖ-ۭ"
-    "]"
-)
+_DIACRITICS = re.compile("[ؐ-ًؚ-ٰٟۖ-ۭ]")
 
 # Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits → ASCII
 _DIGIT_MAP = {ord("٠") + i: str(i) for i in range(10)}

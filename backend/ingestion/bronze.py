@@ -21,7 +21,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from backend.ingestion.datasets import Dataset, SourceTier
+from backend.ingestion.datasets import Dataset
 from backend.ingestion.source import AcquiredFile, Source
 from backend.services.logging import get_logger
 
@@ -134,7 +134,7 @@ async def ingest_dataset(
     for source in sources:
         try:
             files = await source.acquire(dataset)
-        except Exception as exc:  # noqa: BLE001 — one bad source must not kill the run
+        except Exception as exc:
             log.error(
                 "ingest.source_failed",
                 dataset=dataset.id,
@@ -162,7 +162,9 @@ def collect_manifests(root: Path) -> list[dict[str, object]]:
     per-dataset manifests — which are always authoritative — are re-read.
     """
     results: list[dict[str, object]] = []
-    for dataset_dir in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")):
+    for dataset_dir in sorted(
+        p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")
+    ):
         partitions = sorted((p for p in dataset_dir.iterdir() if p.is_dir()), reverse=True)
         for partition in partitions:
             manifest = partition / "_manifest.json"
