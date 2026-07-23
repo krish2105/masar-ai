@@ -98,7 +98,12 @@ class QualityReport:
         self.quarantine_reasons[reason] = self.quarantine_reasons.get(reason, 0) + count
         self.rows_quarantined += count
         if sample is not None and len(self.quarantine_samples) < 10:
-            self.quarantine_samples.append({"reason": reason, "row": sample})
+            # Sampled rows come straight from Polars and carry dates, decimals
+            # and nulls. Stringify at capture time so the report is always
+            # serialisable — a DQ report that fails to write is worse than one
+            # with slightly lossy samples.
+            safe = {k: (None if v is None else str(v)[:200]) for k, v in sample.items()}
+            self.quarantine_samples.append({"reason": reason, "row": safe})
 
     def warn(self, message: str) -> None:
         self.warnings.append(message)
@@ -136,7 +141,8 @@ class QualityReport:
         stamp = datetime.now(tz=UTC).strftime("%Y-%m-%d")
         path = directory / f"{self.dataset_id}_{stamp}.json"
         path.write_text(
-            json.dumps(self.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+            json.dumps(self.to_dict(), indent=2, ensure_ascii=False, default=str),
+            encoding="utf-8",
         )
         return path
 

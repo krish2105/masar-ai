@@ -14,7 +14,12 @@ import asyncio
 import sys
 
 from backend.config.settings import get_settings
-from backend.ingestion.bronze import BronzeWriter, ingest_dataset, summarise
+from backend.ingestion.bronze import (
+    BronzeWriter,
+    collect_manifests,
+    ingest_dataset,
+    summarise,
+)
 from backend.ingestion.datasets import CORE_DATASETS, DATASETS, get
 from backend.ingestion.source import ApiSource, ArchiveSource, LocalCsvSource
 from backend.ingestion.wayback import WaybackClient
@@ -34,7 +39,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="cap files per snapshot family (newest periods kept)",
     )
-    parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--concurrency", type=int, default=3)
+    parser.add_argument(
+        "--rebuild-manifest",
+        action="store_true",
+        help="regenerate the run manifest from on-disk per-dataset manifests, no downloads",
+    )
     return parser.parse_args(argv)
 
 
@@ -42,6 +52,14 @@ async def main(argv: list[str] | None = None) -> int:
     configure_logging()
     args = parse_args(argv)
     settings = get_settings()
+
+    if args.rebuild_manifest:
+        writer = BronzeWriter(settings.bronze_dir)
+        results = collect_manifests(settings.bronze_dir)
+        path = writer.write_run_manifest(results)
+        print(summarise(results))
+        print(f"  run manifest → {path}\n")
+        return 0
 
     if args.only:
         targets = [get(dataset_id) for dataset_id in args.only]
@@ -70,8 +88,12 @@ async def main(argv: list[str] | None = None) -> int:
     log.info("bronze.run.start", datasets=len(targets), ingest_date=writer.ingest_date)
 
     results = []
-    for dataset in targets:
-        results.append(await ingest_dataset(dataset, sources, writer))
+    try:
+        for dataset in targets:
+            results.append(await ingest_dataset(dataset, sources, writer))
+    finally:
+        # Release the pooled connections even if a dataset raises.
+        await client.aclose()
 
     manifest_path = writer.write_run_manifest(results)
     print(summarise(results))

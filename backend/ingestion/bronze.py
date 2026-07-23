@@ -154,6 +154,24 @@ async def ingest_dataset(
     return writer.write(dataset, [])
 
 
+def collect_manifests(root: Path) -> list[dict[str, object]]:
+    """Rebuild the run-level view from the per-dataset manifests on disk.
+
+    A partial run (`--only`) writes a run manifest covering only its targets.
+    Rather than re-downloading everything to regenerate the full picture, the
+    per-dataset manifests — which are always authoritative — are re-read.
+    """
+    results: list[dict[str, object]] = []
+    for dataset_dir in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")):
+        partitions = sorted((p for p in dataset_dir.iterdir() if p.is_dir()), reverse=True)
+        for partition in partitions:
+            manifest = partition / "_manifest.json"
+            if manifest.exists():
+                results.append(json.loads(manifest.read_text(encoding="utf-8")))
+                break
+    return results
+
+
 def summarise(results: list[dict[str, object]]) -> str:
     """Human-readable gate report for Phase 1."""
     lines = [

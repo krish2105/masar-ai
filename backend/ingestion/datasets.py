@@ -216,7 +216,7 @@ DATASETS: tuple[Dataset, ...] = (
         archive_stem="public_transportation_routes_stops",
         domain=Domain.MULTIMODAL,
         role="Route↔stop bridge table — the join backbone for multi-modal traversal.",
-        natural_key=("route_id", "stop_id"),
+        natural_key=("route_name", "route_direction", "stop_id", "stop_order_number"),
     ),
     Dataset(
         id="transport_stations",
@@ -242,7 +242,7 @@ DATASETS: tuple[Dataset, ...] = (
         archive_stem="taxi_stand_locations",
         domain=Domain.TAXI,
         role="Taxi stand geometry — last-mile leg of GEOSPATIAL answers.",
-        natural_key=("stand_id",),
+        natural_key=(),
     ),
     Dataset(
         id="taxi_drivers",

@@ -102,9 +102,9 @@ class WaybackClient:
         self,
         cache_path: Path,
         *,
-        concurrency: int = 4,
+        concurrency: int = 3,
         timeout: float = 300.0,
-        max_retries: int = 3,
+        max_retries: int = 4,
         max_bytes_per_file: int = 250 * 1024 * 1024,
     ) -> None:
         self.cache_path = cache_path
@@ -112,6 +112,42 @@ class WaybackClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self.max_bytes_per_file = max_bytes_per_file
+        self._http: httpx.AsyncClient | None = None
+
+    # ------------------------------------------------------------ transport --
+    def _client(self) -> httpx.AsyncClient:
+        """One pooled client for the whole run.
+
+        Creating a client per request opens a fresh TLS connection every time.
+        Across a few hundred files that exhausts local sockets and the Archive's
+        per-client connection budget, which surfaces as
+        `ConnectError: All connection attempts failed` rather than an HTTP
+        status — so it is invisible to status-code-based retry logic. Pooling
+        and keep-alive fix it at the source.
+        """
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(
+                timeout=httpx.Timeout(self.timeout, connect=30.0),
+                headers={"User-Agent": USER_AGENT},
+                follow_redirects=True,
+                limits=httpx.Limits(
+                    max_connections=self.concurrency + 2,
+                    max_keepalive_connections=self.concurrency,
+                    keepalive_expiry=30.0,
+                ),
+            )
+        return self._http
+
+    async def aclose(self) -> None:
+        if self._http is not None and not self._http.is_closed:
+            await self._http.aclose()
+        self._http = None
+
+    async def __aenter__(self) -> WaybackClient:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
 
     # ---------------------------------------------------------------- index --
     async def fetch_index(self, *, refresh: bool = False) -> list[tuple[str, str, str]]:
@@ -205,41 +241,37 @@ class WaybackClient:
     # ------------------------------------------------------------- download --
     async def download(self, resource: ArchivedResource) -> bytes | None:
         """Fetch one archived file. Returns None when it is unrecoverable."""
-        delay = 2.0
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(self.timeout),
-            headers={"User-Agent": USER_AGENT},
-            follow_redirects=True,
-        ) as client:
-            for attempt in range(1, self.max_retries + 1):
-                try:
-                    response = await client.get(resource.archive_url)
-                    if response.status_code == 200 and response.content:
-                        return response.content
-                    # 429 and 5xx are transient on the Archive; 404 is not.
-                    if response.status_code == 404:
-                        log.warning(
-                            "wayback.download.missing",
-                            file=resource.filename,
-                            status=404,
-                        )
-                        return None
+        client = self._client()
+        delay = 3.0
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = await client.get(resource.archive_url)
+                if response.status_code == 200 and response.content:
+                    return response.content
+                # 404 means this capture genuinely is not held; retrying wastes
+                # a request. 429 and 5xx are transient.
+                if response.status_code == 404:
                     log.warning(
-                        "wayback.download.retry",
-                        file=resource.filename,
-                        status=response.status_code,
-                        attempt=attempt,
+                        "wayback.download.missing", file=resource.filename, status=404
                     )
-                except (httpx.HTTPError, httpx.TimeoutException) as exc:
-                    log.warning(
-                        "wayback.download.error",
-                        file=resource.filename,
-                        error=f"{type(exc).__name__}: {exc}",
-                        attempt=attempt,
-                    )
-                if attempt < self.max_retries:
-                    await asyncio.sleep(delay)
-                    delay *= 2
+                    return None
+                log.warning(
+                    "wayback.download.retry",
+                    file=resource.filename,
+                    status=response.status_code,
+                    attempt=attempt,
+                )
+            except (httpx.HTTPError, httpx.TimeoutException) as exc:
+                log.warning(
+                    "wayback.download.error",
+                    file=resource.filename,
+                    error=f"{type(exc).__name__}: {exc}",
+                    attempt=attempt,
+                )
+            if attempt < self.max_retries:
+                await asyncio.sleep(delay)
+                delay *= 2
 
         log.error("wayback.download.failed", file=resource.filename)
         return None
@@ -251,15 +283,12 @@ class WaybackClient:
         bandwidth. Returns None when the Archive does not advertise a length.
         """
         try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(45.0),
-                headers={"User-Agent": USER_AGENT},
-                follow_redirects=True,
-            ) as client:
-                response = await client.head(resource.archive_url)
-                raw = response.headers.get("content-length")
-                return int(raw) if raw and raw.isdigit() else None
+            response = await self._client().head(resource.archive_url)
+            raw = response.headers.get("content-length")
+            return int(raw) if raw and raw.isdigit() else None
         except (httpx.HTTPError, ValueError):
+            # An unknown size is not a reason to skip; the download itself will
+            # surface any real problem.
             return None
 
     async def download_many(

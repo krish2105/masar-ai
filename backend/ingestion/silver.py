@@ -71,13 +71,18 @@ def standardise_language_suffix(name: str) -> str:
 
 # -------------------------------------------------------------- detection ----
 
-_LATITUDE_HINTS = ("latitude", "lat", "y_coord", "ycoord")
-_LONGITUDE_HINTS = ("longitude", "lon", "lng", "long", "x_coord", "xcoord")
-_DATE_HINTS = ("date", "_at", "opening", "closing", "timestamp")
+# `latitiude` and `longitiude` are misspelled in the published RTA marine
+# dataset. Matching the typo is not defensive padding — without it the marine
+# station geometry is silently dropped.
+_LATITUDE_HINTS = ("latitude", "latitiude", "lat", "y_coord", "ycoord")
+_LONGITUDE_HINTS = (
+    "longitude", "longitiude", "lon", "lng", "long", "x_coord", "xcoord",
+)
+_DATE_HINTS = ("date", "_at", "opening", "closing", "timestamp", "valid_from", "valid_until")
 _NUMERIC_HINTS = (
     "count", "trips", "passengers", "ridership", "fare", "tariff", "amount",
-    "total", "number", "qty", "quantity", "speed", "length", "capacity",
-    "distance", "zone_id", "stop_number", "value", "price",
+    "total", "number", "_num", "qty", "quantity", "speed", "length", "capacity",
+    "distance", "zone_id", "stop_number", "value", "price", "frequency",
 )
 
 # Numeric-looking identifiers that must stay strings: leading zeros and route
@@ -187,29 +192,63 @@ def _clean_strings(frame: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+# A column whose name suggests a number is only cast if its *contents* agree.
+# Below this share of parseable values the column is left as text.
+_NUMERIC_PARSE_THRESHOLD = 0.98
+
+
 def _cast_numerics(frame: pl.DataFrame, report: QualityReport) -> pl.DataFrame:
+    """Cast numeric-looking columns, but let the data have the final say.
+
+    Naming alone is not enough. `station_number` in the RTA station master holds
+    alphanumeric codes such as ``ABBS``; casting it on the strength of "number"
+    in the name silently nulled the identifier for 87 stations. So each
+    candidate is probed first: if fewer than 98% of its non-null values parse,
+    the column stays text and the decision is recorded as a warning rather than
+    being logged as 87 coercion failures the column never deserved.
+    """
     for column in list(frame.columns):
         if column.startswith("_") or frame.schema[column] != pl.Utf8:
             continue
         if not _looks_numeric(column):
             continue
 
-        before = int(frame.get_column(column).is_not_null().sum())
-        # Strip thousands separators and stray currency text before casting.
-        casted = (
+        cleaned = (
             pl.col(column)
             .str.replace_all(r"[,\s]", "")
             .str.replace_all(r"^AED", "")
             .cast(pl.Float64, strict=False)
         )
-        frame = frame.with_columns(casted.alias(column))
-        after = int(frame.get_column(column).is_not_null().sum())
 
-        if after < before:
-            # Values that were present and became null: a real coercion failure.
-            report.add_coercion_failure(column, before - after)
+        before = int(frame.get_column(column).is_not_null().sum())
+        if before == 0:
+            continue
+
+        probe = frame.select(cleaned.alias("probe")).get_column("probe")
+        parseable = int(probe.is_not_null().sum())
+        ratio = parseable / before
+
+        if ratio < _NUMERIC_PARSE_THRESHOLD:
+            report.warn(
+                f"column {column!r} looks numeric but only "
+                f"{parseable}/{before} values parse ({ratio:.1%}); left as text "
+                f"— it is an identifier, not a measure"
+            )
+            log.info(
+                "silver.numeric_declined",
+                column=column,
+                parseable=parseable,
+                total=before,
+            )
+            continue
+
+        frame = frame.with_columns(cleaned.alias(column))
+        lost = before - parseable
+        if lost:
+            # The column really is numeric; these are genuine bad values.
+            report.add_coercion_failure(column, lost)
             log.warning(
-                "silver.coercion_failure", column=column, lost=before - after, dtype="Float64"
+                "silver.coercion_failure", column=column, lost=lost, dtype="Float64"
             )
     return frame
 
