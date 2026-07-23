@@ -84,7 +84,23 @@ query → A1 guardrail → A2 language → A3 intent router → ╔═ A4 SUPERV
 
 Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## 4. Quick start
+## 4. What is actually built and verified
+
+| Layer | State |
+|---|---|
+| **Lakehouse** | **19/19 datasets** recovered, 171 files, 275 MB · silver **19/19 pass, zero coercion failures**, 2.2M rows · gold star schema, **10/10 canonical queries** |
+| **Retrieval** | 869 chunks (196 document + 673 row summaries), pgvector HNSW + Postgres FTS, **10/10 manual probes** |
+| **Agents** | All 14 implemented; 7 fully deterministic |
+| **Graph** | LangGraph with the corrective cycle — **verified firing twice on a real turn** |
+| **API** | SSE streaming, trace, datasets, stats, map |
+| **Frontend** | Next.js 15, 5 routes, builds clean, **light and dark verified in-browser** |
+| **Tests** | **126 unit tests passing** |
+
+Cross-lingual retrieval is verified empirically, not assumed: cosine similarity
+between `"Union Metro Station"` and `"محطة الاتحاد"` is **0.746** in the shared
+bge-m3 space.
+
+## 5. Quick start
 
 ```bash
 make setup
@@ -95,7 +111,7 @@ make up
 ```
 
 ```bash
-make ingest
+make etl
 ```
 
 ```bash
@@ -103,10 +119,18 @@ make dev
 ```
 
 Backend on `http://localhost:8000`, frontend on `http://localhost:3000`.
-The system boots and answers **with zero API keys** — it falls back to local Ollama and shows a
-`degraded_mode` badge in the UI rather than failing.
 
-## 5. Stack
+The system boots and answers **with zero API keys** — it falls through to local
+Ollama and shows a `degraded_mode` badge rather than failing. Add free Groq or
+Gemini keys to `.env` for materially faster and better answers; nothing else
+changes.
+
+> **Note on local-only performance.** On Ollama alone a turn takes 25–95 seconds
+> depending on how many times the corrective loop fires. That is the honest cost
+> of running a 14-agent graph on a 7B model on a laptop, and it is why
+> `degraded_mode` is surfaced in the UI rather than hidden.
+
+## 6. Stack
 
 | Layer | Choice | Why |
 |---|---|---|
@@ -120,7 +144,7 @@ The system boots and answers **with zero API keys** — it falls back to local O
 | Frontend | Next.js 15 · React 19 · Tailwind v4 | App Router, streaming SSE, CSS-first theme tokens |
 | Map | MapLibre GL + OSM raster | No Mapbox token — no credit card |
 
-## 6. Known limitations
+## 7. Known limitations
 
 These are stated openly because a system that hides them cannot be trusted with the ones it doesn't
 know about.
@@ -141,7 +165,7 @@ know about.
    distance and interchange count — never invented durations.
 8. **No affiliation with RTA.** Stated above, in the UI footer, and in every presentation.
 
-## 7. Documentation
+## 8. Documentation
 
 | Document | Contents |
 |---|---|

@@ -473,10 +473,21 @@ def make_graph(agents: Agents, tracer: Tracer | None = None):
         )
         report = result.report
 
+        # The decision string must say what actually happens next. At the cycle
+        # cap the Grader still reports insufficient but no re-plan follows, and
+        # labelling that "→ re-plan" would make the trace lie.
+        will_replan = not report.sufficient and cycle < max_cycles - 1
+        if report.sufficient:
+            decision = "sufficient → synthesis"
+        elif will_replan:
+            decision = f"insufficient → re-plan (cycle {cycle + 1})"
+        else:
+            decision = f"insufficient but cycle cap ({max_cycles}) reached → answering with low confidence"
+
         _trace(
             "A12",
             latency_ms=(time.perf_counter() - started) * 1000,
-            decision="sufficient" if report.sufficient else f"insufficient → re-plan (cycle {cycle + 1})",
+            decision=decision,
             cycle=cycle,
             scores=report.scores,
             weakest_axis=report.weakest_axis,

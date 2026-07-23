@@ -552,6 +552,66 @@ class GoldBuilder:
             )
         return self._write("dim_date", pl.DataFrame(rows))
 
+    # ------------------------------------------------------ taxi and roads ----
+    def build_dim_taxi_stand(self) -> pl.DataFrame:
+        frame = self.silver("taxi_stands")
+        if frame is None:
+            return self._write("dim_taxi_stand", _empty_taxi_stand())
+
+        name = self._pick(frame, "stand_name", "name", "location_name", "taxi_stand_name")
+        identifier = self._pick(frame, "stand_id", "id", "location_id")
+        selected = frame.select(
+            (pl.col(identifier).cast(pl.Utf8) if identifier else pl.lit(None, pl.Utf8)).alias("stand_id"),
+            (pl.col(name).cast(pl.Utf8) if name else pl.lit(None, pl.Utf8)).alias("stand_name_en"),
+            pl.col("latitude").cast(pl.Float64).alias("latitude")
+            if "latitude" in frame.columns else pl.lit(None, pl.Float64).alias("latitude"),
+            pl.col("longitude").cast(pl.Float64).alias("longitude")
+            if "longitude" in frame.columns else pl.lit(None, pl.Float64).alias("longitude"),
+        )
+        stands = self._provenance(selected, "taxi_stands")
+        # Some stands carry no id in the source; a row index keeps the key unique.
+        stands = stands.with_row_index("_row").with_columns(
+            pl.coalesce([pl.col("stand_id"), pl.lit("stand_") + pl.col("_row").cast(pl.Utf8)]).alias("stand_id")
+        ).drop("_row")
+        return self._write("dim_taxi_stand", stands)
+
+    def build_dim_taxi_driver_profile(self) -> pl.DataFrame:
+        frame = self.silver("taxi_drivers")
+        if frame is None:
+            return self._write("dim_taxi_driver_profile", _empty_taxi_driver())
+
+        operator = self._pick(frame, "operator_name", "operator", "company")
+        count = self._pick(frame, "drivers_num", "drivers", "count")
+        selected = frame.select(
+            pl.col("report_date").cast(pl.Utf8).alias("report_date")
+            if "report_date" in frame.columns else pl.lit(None, pl.Utf8).alias("report_date"),
+            pl.col("operator_type").cast(pl.Utf8).alias("operator_type")
+            if "operator_type" in frame.columns else pl.lit(None, pl.Utf8).alias("operator_type"),
+            (pl.col(operator).cast(pl.Utf8) if operator else pl.lit(None, pl.Utf8)).alias("operator_name"),
+            (pl.col(count).cast(pl.Float64) if count else pl.lit(None, pl.Float64)).alias("driver_count"),
+        )
+        return self._write("dim_taxi_driver_profile", self._provenance(selected, "taxi_drivers"))
+
+    def build_dim_salik_gate(self) -> pl.DataFrame:
+        frame = self.silver("salik_gates")
+        if frame is None:
+            return self._write("dim_salik_gate", _empty_salik_gate())
+
+        name_en = self._pick(frame, "gate_name_en", "gate_name", "name_en", "toll_gate_name", "name")
+        name_ar = self._pick(frame, "gate_name_ar", "name_ar")
+        selected = frame.select(
+            (pl.col(name_en).cast(pl.Utf8) if name_en else pl.lit(None, pl.Utf8)).alias("gate_name_en"),
+            (pl.col(name_ar).cast(pl.Utf8) if name_ar else pl.lit(None, pl.Utf8)).alias("gate_name_ar"),
+            pl.col("latitude").cast(pl.Float64).alias("latitude")
+            if "latitude" in frame.columns else pl.lit(None, pl.Float64).alias("latitude"),
+            pl.col("longitude").cast(pl.Float64).alias("longitude")
+            if "longitude" in frame.columns else pl.lit(None, pl.Float64).alias("longitude"),
+        )
+        gates = self._provenance(selected, "salik_gates").with_row_index("gate_id")
+        return self._write(
+            "dim_salik_gate", gates.with_columns(pl.col("gate_id").cast(pl.Utf8))
+        )
+
     # ----------------------------------------------------------------- run ----
     def build_all(self) -> dict[str, pl.DataFrame]:
         tables = {
@@ -562,6 +622,9 @@ class GoldBuilder:
             "fact_ridership_monthly": self.build_fact_ridership(),
             "fact_modal_split_monthly": self.build_fact_modal_split(),
             "dim_salik_tariff": self.build_dim_salik_tariff(),
+            "dim_taxi_stand": self.build_dim_taxi_stand(),
+            "dim_taxi_driver_profile": self.build_dim_taxi_driver_profile(),
+            "dim_salik_gate": self.build_dim_salik_gate(),
         }
         tables["dim_date"] = self.build_dim_date(
             [
@@ -725,6 +788,31 @@ def _empty_salik() -> pl.DataFrame:
     return _empty({
         "date_key": pl.Utf8, "year": pl.Int32, "month_num": pl.Int32,
         "month_raw": pl.Utf8, "fare_aed": pl.Float64, "source_dataset": pl.Utf8,
+        "source_url": pl.Utf8, "captured_at": pl.Utf8, "source_tier": pl.Utf8,
+        "is_synthetic": pl.Boolean,
+    })
+
+
+def _empty_taxi_stand() -> pl.DataFrame:
+    return _empty({
+        "stand_id": pl.Utf8, "stand_name_en": pl.Utf8, "latitude": pl.Float64,
+        "longitude": pl.Float64, "source_dataset": pl.Utf8, "source_url": pl.Utf8,
+        "captured_at": pl.Utf8, "source_tier": pl.Utf8, "is_synthetic": pl.Boolean,
+    })
+
+
+def _empty_taxi_driver() -> pl.DataFrame:
+    return _empty({
+        "report_date": pl.Utf8, "operator_type": pl.Utf8, "operator_name": pl.Utf8,
+        "driver_count": pl.Float64, "source_dataset": pl.Utf8, "source_url": pl.Utf8,
+        "captured_at": pl.Utf8, "source_tier": pl.Utf8, "is_synthetic": pl.Boolean,
+    })
+
+
+def _empty_salik_gate() -> pl.DataFrame:
+    return _empty({
+        "gate_id": pl.Utf8, "gate_name_en": pl.Utf8, "gate_name_ar": pl.Utf8,
+        "latitude": pl.Float64, "longitude": pl.Float64, "source_dataset": pl.Utf8,
         "source_url": pl.Utf8, "captured_at": pl.Utf8, "source_tier": pl.Utf8,
         "is_synthetic": pl.Boolean,
     })

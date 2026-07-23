@@ -155,46 +155,17 @@ async def _stream_turn(request: ChatRequest) -> AsyncIterator[dict[str, str]]:
         },
     )
 
-    # The graph runs as a task while a watcher publishes hops as they land. This
-    # is what surfaces the re-plan live rather than only in the final trace.
+    # Keep-alive comments while the graph runs. Without them a proxy or browser
+    # can time out a stream that produces nothing for 30+ seconds — which is
+    # exactly what a local-model turn looks like.
     task = asyncio.create_task(
         graph.run_turn(request.query, session_id=session_id, turn_id=turn_id)
     )
 
-    published = 0
-    tracer_ref: list[Any] = []
-
-    async def watch() -> AsyncIterator[dict[str, str]]:
-        nonlocal published
-        while not task.done():
-            await asyncio.sleep(0.15)
-            if tracer_ref:
-                hops = tracer_ref[0].hops
-                while published < len(hops):
-                    hop = hops[published]
-                    published += 1
-                    yield _event(
-                        "agent_end",
-                        {
-                            "agent_id": hop.agent_id,
-                            "label_en": agent_label(hop.agent_id, "en"),
-                            "label_ar": agent_label(hop.agent_id, "ar"),
-                            "latency_ms": hop.latency_ms,
-                            "decision": hop.decision,
-                            "cycle": hop.cycle,
-                            "provider": hop.provider,
-                            "is_replan": hop.agent_id == "A4" and hop.cycle > 0,
-                        },
-                    )
-
-    # The tracer is created inside run_turn, so poll briefly for it.
-    async def attach() -> None:
-        for _ in range(200):
-            if task.done():
-                return
-            await asyncio.sleep(0.05)
-
-    attach_task = asyncio.create_task(attach())
+    while not task.done():
+        done, _ = await asyncio.wait({task}, timeout=5.0)
+        if not done:
+            yield _event("heartbeat", {"status": "running"})
 
     try:
         state, tracer = await task
@@ -202,8 +173,6 @@ async def _stream_turn(request: ChatRequest) -> AsyncIterator[dict[str, str]]:
         log.error("chat.stream_failed", error=f"{type(exc).__name__}: {exc}")
         yield _event("error", {"message": "The turn failed."})
         return
-    finally:
-        attach_task.cancel()
 
     # Publish every hop in order. Latency detail is what the trace viewer needs.
     for hop in tracer.hops:

@@ -253,6 +253,12 @@ DATASETS: tuple[Dataset, ...] = (
         is_snapshot_family=True,
     ),
     # ---- Roads -------------------------------------------------------------
+    # NOTE: rta_salik_tolling_gates_location-open is NOT recoverable. The
+    # Internet Archive holds the dataset's landing page but no CSV capture of
+    # its resources, so gate geometry does not exist in this build. `dim_salik_gate`
+    # is created empty rather than omitted: a query against it then returns no
+    # rows, which is a truthful answer, instead of "relation does not exist",
+    # which reads as a bug.
     Dataset(
         id="salik_tariff",
         dubai_pulse_slug="rta_salik_tariff-open",

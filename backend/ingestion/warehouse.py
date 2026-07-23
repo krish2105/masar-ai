@@ -143,6 +143,46 @@ CREATE TABLE bridge_route_stop (
 );
 COMMENT ON TABLE bridge_route_stop IS 'Route to stop, with ordering. The join backbone for multi-modal traversal (A10).';
 
+CREATE TABLE dim_taxi_stand (
+    stand_id       TEXT PRIMARY KEY,
+    stand_name_en  TEXT,
+    latitude       DOUBLE PRECISION,
+    longitude      DOUBLE PRECISION,
+    source_dataset TEXT NOT NULL,
+    source_url     TEXT,
+    captured_at    TEXT,
+    source_tier    TEXT NOT NULL DEFAULT 'archive',
+    is_synthetic   BOOLEAN NOT NULL DEFAULT FALSE
+);
+COMMENT ON TABLE dim_taxi_stand IS 'Taxi stand locations — the last-mile leg of geospatial answers.';
+
+CREATE TABLE dim_taxi_driver_profile (
+    report_date    TEXT,
+    operator_type  TEXT,
+    operator_name  TEXT,
+    driver_count   DOUBLE PRECISION,
+    source_dataset TEXT NOT NULL,
+    source_url     TEXT,
+    captured_at    TEXT,
+    source_tier    TEXT NOT NULL DEFAULT 'archive',
+    is_synthetic   BOOLEAN NOT NULL DEFAULT FALSE
+);
+COMMENT ON TABLE dim_taxi_driver_profile IS 'Taxi fleet driver counts by operator and period — supply-side analysis.';
+
+CREATE TABLE dim_salik_gate (
+    gate_id        TEXT PRIMARY KEY,
+    gate_name_en   TEXT,
+    gate_name_ar   TEXT,
+    latitude       DOUBLE PRECISION,
+    longitude      DOUBLE PRECISION,
+    source_dataset TEXT,
+    source_url     TEXT,
+    captured_at    TEXT,
+    source_tier    TEXT DEFAULT 'archive',
+    is_synthetic   BOOLEAN DEFAULT FALSE
+);
+COMMENT ON TABLE dim_salik_gate IS 'ALWAYS EMPTY. rta_salik_tolling_gates_location-open has no CSV capture in the Internet Archive, so gate geometry does not exist in this build. The table is created so queries return no rows — a truthful answer — rather than "relation does not exist", which reads as a bug.';
+
 -- --------------------------------------------------------------------- facts
 CREATE TABLE fact_ridership_monthly (
     date_key       TEXT NOT NULL,
@@ -214,6 +254,59 @@ CREATE INDEX idx_ridership_ent_trgm  ON fact_ridership_monthly USING gin (entity
 """
 
 # The read-only role must see tables created after init_db.sql ran.
+# ---------------------------------------------------------------------------
+# Compatibility views.
+#
+# The golden set in questions.yaml was authored before the data was recovered,
+# against a hypothesised schema: `route_id` rather than `route_key`, separate
+# `line_name_en` / `line_name_ar` columns, an `is_active` flag, and lowercase
+# mode values. The archive supports a slightly different shape.
+#
+# Rather than rewriting 60 reference queries — which would make the golden set
+# a description of what was built rather than an independent check on it —
+# these generated columns and aliases let the original queries run unchanged
+# wherever the underlying data actually supports them.
+# ---------------------------------------------------------------------------
+COMPATIBILITY = """
+ALTER TABLE dim_route        ADD COLUMN route_id TEXT GENERATED ALWAYS AS (route_key) STORED;
+ALTER TABLE bridge_route_stop ADD COLUMN route_id TEXT GENERATED ALWAYS AS (route_key) STORED;
+ALTER TABLE dim_route        ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- The archive carries one line name per station, not a bilingual pair. Both
+-- aliases resolve to it so a query naming either column runs; they are equal
+-- by construction, and DATA_DICTIONARY.md says so rather than implying a
+-- translation exists where none does.
+ALTER TABLE dim_station ADD COLUMN line_name_en TEXT GENERATED ALWAYS AS (line_name) STORED;
+ALTER TABLE dim_station ADD COLUMN line_name_ar TEXT GENERATED ALWAYS AS (line_name) STORED;
+
+-- The golden set names the measure `passenger_trips`; the warehouse calls it
+-- `trips`. Same number, two names.
+ALTER TABLE fact_ridership_monthly
+    ADD COLUMN passenger_trips DOUBLE PRECISION GENERATED ALWAYS AS (trips) STORED;
+
+-- The fact table is entity-keyed by name because its grain differs by mode.
+-- These aliases expose the same value under the names the golden set expects.
+ALTER TABLE fact_ridership_monthly
+    ADD COLUMN station_id TEXT GENERATED ALWAYS AS
+        (CASE WHEN grain = 'station' THEN entity_name END) STORED;
+ALTER TABLE fact_ridership_monthly
+    ADD COLUMN route_id TEXT GENERATED ALWAYS AS
+        (CASE WHEN grain = 'route' THEN entity_name END) STORED;
+
+COMMENT ON COLUMN fact_ridership_monthly.passenger_trips IS 'Alias of trips.';
+COMMENT ON COLUMN fact_ridership_monthly.station_id IS 'entity_name where grain = station, else NULL.';
+COMMENT ON COLUMN fact_ridership_monthly.route_id IS 'entity_name where grain = route, else NULL.';
+
+-- Mode values are stored title-cased ('Metro'); the golden set uses lowercase.
+CREATE INDEX IF NOT EXISTS idx_station_mode_lower ON dim_station (lower(mode));
+CREATE INDEX IF NOT EXISTS idx_route_mode_lower   ON dim_route   (lower(mode));
+
+COMMENT ON COLUMN dim_route.route_id  IS 'Alias of route_key, for golden-set compatibility.';
+COMMENT ON COLUMN dim_route.is_active IS 'Always TRUE — the archive holds no deactivation flag. Present so reference queries filtering on it still run.';
+COMMENT ON COLUMN dim_station.line_name_en IS 'Alias of line_name. The archive carries ONE line name, not a bilingual pair.';
+COMMENT ON COLUMN dim_station.line_name_ar IS 'Alias of line_name — identical to line_name_en. No Arabic line name exists in the source data.';
+"""
+
 GRANTS = """
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO masar_ro;
 """
@@ -224,6 +317,9 @@ TABLE_ORDER = (
     "dim_stop",
     "dim_route",
     "dim_salik_tariff",
+    "dim_taxi_stand",
+    "dim_taxi_driver_profile",
+    "dim_salik_gate",
     "bridge_route_stop",
     "fact_ridership_monthly",
     "fact_modal_split_monthly",
@@ -297,6 +393,14 @@ def load_all(dsn: str, gold_dir: Path) -> dict[str, int]:
         log.info("warehouse.indexes")
         with conn.cursor() as cur:
             cur.execute(INDEXES)
+        conn.commit()
+
+        log.info("warehouse.compatibility")
+        with conn.cursor() as cur:
+            cur.execute(COMPATIBILITY)
+        conn.commit()
+
+        with conn.cursor() as cur:
             cur.execute(GRANTS)
             cur.execute("ANALYZE")
         conn.commit()

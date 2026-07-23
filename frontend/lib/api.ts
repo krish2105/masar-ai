@@ -9,6 +9,17 @@ import type { AgentDescriptor, AgentEvent, Citation, TurnMeta } from "./types";
  * fifteen lines.
  */
 
+/**
+ * Streaming requests go straight to the backend origin, not through the
+ * Next.js rewrite. `rewrites()` buffers the response body, which is invisible
+ * for JSON and fatal for SSE — the whole stream arrives at once, after the turn
+ * has already finished, so nothing ever appears live. CORS on the backend is
+ * configured for exactly this.
+ *
+ * Non-streaming JSON still uses the rewrite (same-origin, no preflight).
+ */
+const STREAM_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+
 export interface StreamHandlers {
   onStart?: (payload: { session_id: string; turn_id: string; agents: AgentDescriptor[] }) => void;
   onAgent?: (event: AgentEvent) => void;
@@ -27,7 +38,7 @@ export async function streamChat(
 ): Promise<void> {
   let response: Response;
   try {
-    response = await fetch("/api/v1/chat/stream", {
+    response = await fetch(`${STREAM_BASE}/api/v1/chat/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, session_id: sessionId }),
@@ -52,7 +63,11 @@ export async function streamChat(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      // Normalise line endings before framing. sse_starlette emits CRLF, so
+      // splitting on "\n\n" matches nothing and every frame is silently
+      // swallowed — a stream that looks perfect on the wire and delivers
+      // nothing to the UI.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
 
       // SSE frames are separated by a blank line.
       const frames = buffer.split("\n\n");
