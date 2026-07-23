@@ -14,7 +14,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routes import health
+from backend.api.routes import chat, health, trace
 from backend.config.settings import get_settings
 from backend.services.logging import configure_logging, get_logger
 
@@ -70,6 +70,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(chat.router)
+    app.include_router(trace.router)
 
     return app
 

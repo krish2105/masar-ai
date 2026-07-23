@@ -1,0 +1,273 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   MASAR AI — Desert Ink
+   Warm neutrals rather than the usual blue-black: it gives the product a
+   regional identity, and warm off-white is measurably easier to read Arabic on
+   than pure white.
+
+   Amber is reserved EXCLUSIVELY for the corrective loop. One accent meaning one
+   thing is what lets a reader recognise a re-plan instantly, without a legend.
+   ============================================================================= */
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-arabic), var(--font-inter), sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Fluid type — interpolates, no breakpoint jumps */
+  --text-step--1: clamp(0.78rem, 0.75rem + 0.15vw, 0.85rem);
+  --text-step-0: clamp(0.92rem, 0.88rem + 0.2vw, 1rem);
+  --text-step-1: clamp(1.1rem, 1.02rem + 0.4vw, 1.3rem);
+  --text-step-2: clamp(1.35rem, 1.2rem + 0.7vw, 1.8rem);
+  --text-step-3: clamp(1.7rem, 1.4rem + 1.3vw, 2.6rem);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ---- Light (default) ------------------------------------------------------ */
+:root {
+  --bg: #f6f2ea;
+  --surface: #fffdf9;
+  --surface-2: #f1ece2;
+  --border: #e7e0d3;
+  --border-strong: #d6ccb8;
+
+  --text: #1c1917;
+  --text-muted: #57534e;
+  --text-faint: #8a8378;
+
+  /* Teal — the RTA-adjacent accent, deepened for contrast on light */
+  --accent: #0f766e;
+  --accent-hover: #0d6963;
+  --accent-soft: rgba(15, 118, 110, 0.1);
+  --accent-border: rgba(15, 118, 110, 0.28);
+
+  /* Amber — corrective loop ONLY */
+  --loop: #925807;
+  --loop-soft: rgba(146, 88, 7, 0.12);
+  --loop-border: rgba(146, 88, 7, 0.3);
+
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.06);
+  --shadow-md: 0 4px 16px rgba(28, 25, 23, 0.08);
+  --shadow-lg: 0 12px 40px rgba(28, 25, 23, 0.12);
+
+  color-scheme: light;
+}
+
+/* ---- Dark ----------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --bg: #100f0d;
+  --surface: #1a1815;
+  --surface-2: #221f1a;
+  --border: #2a2721;
+  --border-strong: #3a352c;
+
+  --text: #ede9e3;
+  --text-muted: #c4bdb2;
+  --text-faint: #8f887e;
+
+  --accent: #2abfb2;
+  --accent-hover: #5fd9ce;
+  --accent-soft: rgba(42, 191, 178, 0.13);
+  --accent-border: rgba(42, 191, 178, 0.32);
+
+  --loop: #e6a03c;
+  --loop-soft: rgba(230, 160, 60, 0.16);
+  --loop-border: rgba(230, 160, 60, 0.38);
+
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+/* Respect the OS until the user chooses. data-theme always wins after that. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #100f0d;
+    --surface: #1a1815;
+    --surface-2: #221f1a;
+    --border: #2a2721;
+    --border-strong: #3a352c;
+    --text: #ede9e3;
+    --text-muted: #c4bdb2;
+    --text-faint: #8f887e;
+    --accent: #2abfb2;
+    --accent-hover: #5fd9ce;
+    --accent-soft: rgba(42, 191, 178, 0.13);
+    --accent-border: rgba(42, 191, 178, 0.32);
+    --loop: #e6a03c;
+    --loop-soft: rgba(230, 160, 60, 0.16);
+    --loop-border: rgba(230, 160, 60, 0.38);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.12);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-loop: var(--loop);
+  --color-danger: var(--danger);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-step-0);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s var(--ease-out-quart),
+    color 0.3s var(--ease-out-quart);
+}
+
+[dir="rtl"],
+[lang="ar"] {
+  font-family: var(--font-arabic);
+  line-height: 1.85; /* Arabic needs more leading than Latin */
+}
+
+/* Visible keyboard focus everywhere — never removed, only restyled. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Scrollbars that read as part of the surface rather than the OS */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* ---- utilities ------------------------------------------------------------ */
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.chip-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+.chip-loop {
+  background: var(--loop-soft);
+  color: var(--loop);
+  border: 1px solid var(--loop-border);
+}
+
+.chip-idle {
+  background: var(--surface-2);
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+
+/* The corrective-loop badge. Deliberately the only pulsing element in the UI:
+   when everything else is still, a single pulse is unmissable. */
+@keyframes loop-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--loop-soft); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+.chip-loop-active {
+  animation: loop-pulse 1.8s var(--ease-out-quart) infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Markdown inside answer bubbles */
+.prose-masar { line-height: 1.7; }
+.prose-masar p { margin-bottom: 0.75rem; }
+.prose-masar p:last-child { margin-bottom: 0; }
+.prose-masar ul, .prose-masar ol { margin: 0.5rem 0 0.75rem 1.25rem; }
+.prose-masar li { margin-bottom: 0.3rem; }
+.prose-masar strong { font-weight: 650; color: var(--text); }
+.prose-masar code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+.prose-masar hr { border-color: var(--border); margin: 1rem 0 0.6rem; }
+.prose-masar em { color: var(--text-muted); font-size: 0.9em; }
+.prose-masar table { width: 100%; font-size: 0.85em; margin: 0.5rem 0; }
+.prose-masar th { text-align: start; font-weight: 650; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+.prose-masar td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+
+/* ---- reduced motion: the single most important accessibility rule --------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
