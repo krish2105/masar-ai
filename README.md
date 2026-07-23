@@ -94,7 +94,8 @@ Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | **Graph** | LangGraph with the corrective cycle — **verified firing twice on a real turn** |
 | **API** | SSE streaming, trace, datasets, stats, map |
 | **Frontend** | Next.js 15, 5 routes, builds clean, **light and dark verified in-browser** |
-| **Tests** | **126 unit tests passing** |
+| **Tests** | **126 unit tests passing**, ruff clean |
+| **Eval** | 8-question sample on the local-only path: citation validity **1.00**, numeric accuracy **1.00**, zero `must_not` violations — **but the corrective loop fires on 100% of turns and always hits the cycle cap**, which is mis-tuned. See [EVALUATION.md](docs/EVALUATION.md). |
 
 Cross-lingual retrieval is verified empirically, not assumed: cosine similarity
 between `"Union Metro Station"` and `"محطة الاتحاد"` is **0.746** in the shared

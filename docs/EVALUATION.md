@@ -40,7 +40,71 @@ fires, which puts a 60-question run at 1–2 hours.
 cloud keys** — the system's worst-case configuration. See
 `reports/eval/` for the machine-readable report.
 
-<!-- EVAL_RESULTS -->
+```
+questions evaluated      8
+answered                 8
+
+metric                        value   threshold  gate
+intent_accuracy               0.750        0.90   ✗
+citation_validity             1.000        1.00   ✓
+numeric_accuracy              1.000        1.00   ✓
+p95_latency_s                128.47        8.00   ✗
+agent_activation              0.625          —
+must_not_violations               0           0   ✓
+
+corrective loop: 8/8 turns re-planned (100%), 8 hit the cycle cap
+AR/EN pass-rate parity gap: 0.000
+reference_sql: {empty: 7, absent: 1}
+judged metrics: unavailable — requires a cloud provider
+```
+
+### The finding that matters most: the loop fires on everything
+
+**8 of 8 turns re-planned, and all 8 exhausted the cycle cap.**
+
+That is not the designed behaviour. The intent was that a meaningful minority of
+queries trigger a re-plan — the threshold was chosen so the loop corrects real
+insufficiency without tripling latency on every question. Firing 100% of the
+time and always hitting the cap is precisely the "too strict" failure mode the
+design was meant to avoid, and it is the single largest cause of the 128-second
+p95.
+
+Two candidate explanations, not yet distinguished:
+
+1. **The 0.7 threshold is too strict for evidence a 7B model assembles.** The
+   Grader's deterministic axes are computed the same way regardless of model,
+   but the *evidence* being scored is thinner when planning and SQL generation
+   are done by a small local model.
+2. **Local grading is systematically pessimistic.** A12 takes the *lower* of the
+   model and deterministic score on every axis. If `qwen2.5:7b` under-scores,
+   the conservative combination guarantees insufficiency.
+
+Distinguishing them requires a cloud-key run — the same eight questions with
+Gemini planning and Groq grading. Until then the honest statement is: **the
+threshold is untuned for the local path, and the re-plan rate reported in the
+design (~18%) is not what this configuration does.**
+
+### The other two gate failures
+
+**`intent_accuracy` 0.750 against a 0.90 threshold.** Six of eight matched. The
+sample is eight questions, so this is two misses, and one is arguably correct
+routing to a neighbouring intent. Not meaningful until the full set runs.
+
+**`p95_latency` 128s against an 8s threshold.** Every turn ran three planning
+cycles on a local 7B model. The 8-second budget assumes a single-cycle path on
+cloud inference; this is neither. It is a real number from a real run, reported
+as measured rather than adjusted to fit.
+
+### What passed, and why it will keep passing
+
+| Metric | Result | Why it holds |
+|---|---|---|
+| `citation_validity` | **1.000** | A13 strips unresolvable markers in code |
+| `numeric_accuracy` | **1.000** | A11 is deterministic; A13 quotes verbatim |
+| `must_not_violations` | **0** | No answer claimed live data or invented an unsourced route |
+| AR/EN parity gap | **0.000** | Both languages answered; the sample is too small for this to be a real measurement |
+
+
 
 ### How to read these numbers
 
@@ -53,12 +117,12 @@ where a stronger model would move the numbers.
 ## The corrective loop
 
 The loop is the system's central claim, so its behaviour is measured rather than
-asserted.
+asserted — and the measurement above says it is currently **mis-tuned on the
+local path**, firing on 100% of turns and always exhausting the cap.
 
-Thresholds were tuned against the golden set. At 0.7 on all four axes the loop
-fires on a meaningful minority of queries rather than on all of them or none.
-Too strict and it loops on every query, tripling latency for no quality gain;
-too loose and it never corrects, making the loop decorative.
+What the loop demonstrably *does* do correctly is produce **actionable** gaps and
+a genuinely different plan. What it does not yet do is fire selectively. Those
+are separate properties, and only the first is currently verified.
 
 A worked example from the sample run — question `EN-JP-002`, *"How do I get from
 Deira City Centre to Mall of the Emirates?"*:
@@ -137,13 +201,25 @@ properties of the code rather than of generation:
 
 ## Known evaluation gaps
 
-1. **Judged metrics are unmeasured** without cloud keys.
-2. **The full 60-question set has not been run** end to end; the sample is 8.
-3. **The ablation study has not been run.**
-4. **Arabic parity** needs the full set to be meaningful — the sample is too
-   small for the gap to be a real measurement.
-5. **`must_not` checking is keyword-level**, deliberately conservative to avoid
+1. **The Grader threshold is untuned for the local path** — 100% re-plan rate,
+   100% cycle-cap exhaustion. This is a *failing* result, not a missing one, and
+   it is the first thing to fix.
+2. **Judged metrics are unmeasured** without cloud keys.
+3. **The full 60-question set has not been run** end to end; the sample is 8.
+4. **The ablation study has not been run.**
+5. **Arabic parity** needs the full set to be meaningful — 0.000 on eight
+   questions is not a measurement.
+6. **`must_not` checking is keyword-level**, deliberately conservative to avoid
    failing correct answers. Semantic violations need the judge.
 
-Each is a missing measurement, not a failing one. They are listed here because
-a reader deserves to know which numbers exist and which do not.
+Items 2–6 are missing measurements. Item 1 is a real defect, found because the
+harness measured the loop rather than assuming it worked.
+
+## Next actions, in order
+
+1. Re-run the same eight questions with a free Groq key. That single run
+   distinguishes "threshold too strict" from "local grading pessimistic", which
+   determines whether the fix is a threshold change or a grading change.
+2. Re-tune the threshold against the outcome, targeting a re-plan rate in the
+   15–25% range with cap exhaustion under 5%.
+3. Run the full 60 questions, then the four-configuration ablation.
