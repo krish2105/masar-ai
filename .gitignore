@@ -1,0 +1,48 @@
+# ---- secrets ----
+.env
+.env.local
+*.pem
+
+# ---- data lakehouse (regenerable via `make ingest`) ----
+data/bronze/
+data/silver/
+data/gold/
+!data/corpus/
+!data/corpus/**
+
+# ---- generated artefacts ----
+reports/dq/*.json
+reports/eval/*.json
+traces/
+!traces/.gitkeep
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# ---- node / next ----
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# ---- local models ----
+models/
+.cache/
+
+# ---- brainstorm companion ----
+.superpowers/
+
+# ---- os / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,133 @@
+# =============================================================================
+# MASAR AI — model routing policy (§4.2)
+#
+# Routing is by TASK CLASS, not by preference. Each class declares an ordered
+# fallback chain. RateLimitedRouter walks the chain on 429 / bucket exhaustion /
+# transport error, and sets degraded_mode=true in response metadata the moment
+# it drops to a local provider — so the UI can show an honest badge rather than
+# silently serving weaker answers.
+#
+# A provider whose API key is absent is skipped at load time with a structured
+# warning naming the degraded capability. The system never crashes on a missing
+# optional key (§4.3).
+# =============================================================================
+
+providers:
+  groq:
+    env_key: GROQ_API_KEY
+    litellm_prefix: groq
+    # Verified free tier, July 2026 — re-verify before a demo, providers move.
+    rate_limits: { rpm: 30, rpd: 1000, tpm: 6000 }
+    notes: "Sub-200ms TTFT on LPU hardware. Best choice for latency-critical hops."
+
+  gemini:
+    env_key: GEMINI_API_KEY
+    litellm_prefix: gemini
+    rate_limits: { rpm: 10, rpd: 250, tpm: 250000 }
+    notes: "1M token context. Strongest structured reasoning and Arabic of the free tier."
+
+  cerebras:
+    env_key: CEREBRAS_API_KEY
+    litellm_prefix: cerebras
+    rate_limits: { rpm: 30, rpd: 14400, tpd: 1000000 }
+    notes: "~1M tokens/day. Good mid-chain buffer."
+
+  ollama:
+    env_key: null            # always available — no key, no limit, no network
+    litellm_prefix: ollama
+    rate_limits: null
+    local: true
+    notes: "Terminal fallback. Guarantees the system always answers."
+
+# -----------------------------------------------------------------------------
+# Task classes. `chain` is walked strictly in order.
+# -----------------------------------------------------------------------------
+task_classes:
+
+  routing:
+    description: "Intent classification (A3). Latency-critical, high volume, low reasoning depth."
+    temperature: 0.0
+    max_tokens: 256
+    chain:
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  planning:
+    description: "Supervisor decomposition and re-planning (A4). Structured output quality matters most."
+    temperature: 0.1
+    max_tokens: 2048
+    chain:
+      - { provider: gemini,   model: gemini-2.5-flash }
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  synthesis:
+    description: "Long-context answer composition with citations (A13)."
+    temperature: 0.2
+    max_tokens: 4096
+    chain:
+      - { provider: gemini,   model: gemini-2.5-flash }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  sql:
+    description: "Text-to-SQL generation (A8). Codegen quality dominates."
+    temperature: 0.0
+    max_tokens: 1024
+    chain:
+      - { provider: gemini,   model: gemini-2.5-flash }
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: ollama,   model: qwen2.5-coder:7b }
+
+  grading:
+    description: "Evidence sufficiency scoring (A12). Highest call volume — needs cheap and fast."
+    temperature: 0.0
+    max_tokens: 512
+    chain:
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  rewrite:
+    description: "Query rewriting — HyDE, expansion, cross-language mirror (A5)."
+    temperature: 0.3
+    max_tokens: 768
+    chain:
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  arabic:
+    description: "Arabic generation. Gemini is materially the strongest free option."
+    temperature: 0.2
+    max_tokens: 4096
+    chain:
+      - { provider: gemini,   model: gemini-2.5-flash }
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: ollama,   model: qwen2.5:7b }
+
+  guardrail:
+    description: "Injection / scope adjudication (A1), only when deterministic rules are inconclusive."
+    temperature: 0.0
+    max_tokens: 256
+    chain:
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: ollama,   model: qwen2.5:1.5b }
+
+# -----------------------------------------------------------------------------
+# Local models — no provider, no key, no network.
+# -----------------------------------------------------------------------------
+local_models:
+  embedding:
+    name: BAAI/bge-m3
+    dimensions: 1024
+    max_seq_length: 8192
+    notes: "Shared AR+EN embedding space — a query in one language retrieves documents in the other."
+  reranker:
+    name: BAAI/bge-reranker-v2-m3
+    threshold: 0.35
+    top_k: 8
+    notes: "Candidates below threshold are dropped even if that leaves fewer than top_k. A thin clean context beats a padded one."

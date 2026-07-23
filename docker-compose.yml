@@ -1,0 +1,85 @@
+# =============================================================================
+# MASAR AI — local stack
+#   postgres : facts + pgvector embeddings + FTS, all in one engine
+#   redis    : per-provider token buckets, semantic cache, session state
+#   api      : FastAPI backend (profile "full"; omit to run the API on the host)
+#
+#   make up      → postgres + redis only (recommended for development)
+#   make up-full → adds the containerised API
+# =============================================================================
+
+name: masar
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: masar-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-masar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-masar_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-masar}
+      # Arabic collation needs a UTF-8 locale
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - masar_pgdata:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-masar} -d ${POSTGRES_DB:-masar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: masar-redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - masar_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    profiles: ["full"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: masar-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      # host.docker.internal lets the container reach Ollama running on the Mac
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./traces:/app/traces
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  masar_pgdata:
+  masar_redisdata:

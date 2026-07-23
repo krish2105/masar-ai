@@ -1,0 +1,131 @@
+# =============================================================================
+# MASAR AI — fare and toll reference table
+#
+# A11 (Numeric Calculator) is pure deterministic Python and never invents a
+# number. Every rate it uses comes from this file, and every rate carries the
+# source it came from and the date it took effect.
+#
+# WHY A CONFIG FILE AND NOT CONSTANTS IN CODE
+# Fares change. A number hardcoded in a function is a number nobody can audit
+# and nobody updates. Here, each rate is citable: A11 returns the `source` and
+# `effective_from` of every rate it applies, A13 renders them as declared
+# assumptions, and the UI shows them beneath the calculation.
+#
+# HONESTY NOTE
+# These are published public tariffs, transcribed by hand. Where a rate could
+# not be confirmed against an archived RTA dataset it is marked
+# `verified_against_dataset: false` and the answer says the figure is indicative.
+# The system never presents an unverified rate as authoritative.
+# =============================================================================
+
+meta:
+  currency: AED
+  last_reviewed: "2026-07-24"
+  disclaimer: >
+    Fares transcribed from publicly published RTA tariffs. Masar AI is an
+    independent project with no affiliation to RTA. Confirm current fares at
+    rta.ae before relying on them for a real journey or budget.
+
+# -----------------------------------------------------------------------------
+# nol card — public transport fares by zone count
+# Zones crossed determines the fare, not distance travelled.
+# -----------------------------------------------------------------------------
+nol:
+  source: "https://www.rta.ae/wps/portal/rta/ae/public-transport/nol-cards"
+  effective_from: "2022-01-01"
+  verified_against_dataset: false
+  note: >
+    Fare bands are stable over long periods but are not present in any archived
+    Dubai Pulse dataset, so they cannot be cross-checked programmatically.
+    Treated as indicative and labelled as such in every answer that uses them.
+
+  card_types:
+    silver:
+      label_en: "Silver nol"
+      label_ar: "بطاقة نول الفضية"
+      multiplier: 1.0
+      card_cost: 25.00
+      stored_value_included: 19.00
+    gold:
+      label_en: "Gold nol"
+      label_ar: "بطاقة نول الذهبية"
+      multiplier: 2.0
+      card_cost: 25.00
+      stored_value_included: 19.00
+      note: "Gold class carriage — double the standard fare."
+    blue:
+      label_en: "Blue nol (personalised)"
+      label_ar: "بطاقة نول الزرقاء"
+      multiplier: 1.0
+      card_cost: 70.00
+      stored_value_included: 20.00
+      note: "Personalised; eligible for concession categories."
+    red:
+      label_en: "Red ticket"
+      label_ar: "التذكرة الحمراء"
+      multiplier: 1.0
+      card_cost: 2.00
+      stored_value_included: 0.00
+      note: "Paper ticket for occasional use; surcharge applies per trip."
+
+  # Base fare by number of zones crossed, before the card-type multiplier.
+  zone_fares:
+    1: 3.00
+    2: 5.00
+    3: 7.50
+
+  max_zones: 3
+  note_zones: >
+    Three or more zones are charged at the 3-zone rate; RTA does not price
+    beyond it.
+
+  passes:
+    daily_all_modes: 20.00
+    weekly_all_zones: 110.00
+    monthly_all_zones: 350.00
+    monthly_one_zone: 230.00
+    monthly_two_zone: 270.00
+
+# -----------------------------------------------------------------------------
+# Salik — road toll
+# -----------------------------------------------------------------------------
+salik:
+  source: "https://www.dubaipulse.gov.ae/data/rta-archive/rta_salik_tariff-open"
+  effective_from: "2018-11-01"
+  verified_against_dataset: true
+  dataset_id: salik_tariff
+  note: >
+    AED 4.00 per gate crossing is the rate present in the archived RTA tariff
+    dataset (2018-11). RTA later introduced variable peak pricing; because that
+    change is NOT in any dataset Masar holds, the flat rate is used and every
+    Salik answer states the rate's effective date explicitly.
+
+  flat_rate_per_crossing: 4.00
+  daily_cap_crossings: null
+  note_cap: "No daily crossing cap is present in the archived tariff data."
+
+# -----------------------------------------------------------------------------
+# Private vehicle running costs — used ONLY for drive-vs-transit comparisons
+# These are assumptions, not published RTA rates, and are always returned as
+# such so the user can see and challenge them.
+# -----------------------------------------------------------------------------
+driving_assumptions:
+  source: "Masar AI declared assumption — not an RTA figure"
+  verified_against_dataset: false
+
+  fuel_price_per_litre: 2.90
+  fuel_consumption_l_per_100km: 9.0
+  parking_per_day: 15.00
+  note: >
+    Fuel price and consumption are indicative mid-range values for Dubai.
+    Parking assumes a paid public zone; residential and free-parking journeys
+    differ substantially. These are surfaced as assumptions in every comparison
+    and are overridable per query.
+
+# -----------------------------------------------------------------------------
+# Commute modelling defaults
+# -----------------------------------------------------------------------------
+commute_defaults:
+  working_days_per_month: 22
+  trips_per_working_day: 2
+  note: "22 working days reflects a 5-day week; overridable per query."
