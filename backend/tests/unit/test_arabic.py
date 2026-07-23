@@ -103,6 +103,23 @@ class TestArabizi:
         are full of digits and mangling them would break exact-match retrieval."""
         assert looks_like_arabizi(text) is False
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Which zone is Union metro station in?",
+            "How much is a bus fare?",
+            "Is the tram cheaper than a taxi?",
+            "Where can I buy a nol card?",
+            "What is Salik?",
+        ],
+    )
+    def test_english_transit_loanwords_are_not_arabizi(self, text: str) -> None:
+        """Regression: "metro", "bus", "taxi", "tram", "nol" and "salik" are
+        ordinary English. Treating them as Arabizi markers made every English
+        sentence containing "metro" get answered in Arabic — the exact failure
+        A2 exists to prevent."""
+        assert looks_like_arabizi(text) is False
+
     def test_arabic_text_is_not_arabizi(self) -> None:
         assert looks_like_arabizi("محطة الاتحاد") is False
 

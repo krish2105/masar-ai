@@ -80,7 +80,7 @@ task_classes:
     chain:
       - { provider: gemini,   model: gemini-2.5-flash }
       - { provider: groq,     model: llama-3.3-70b-versatile }
-      - { provider: ollama,   model: qwen2.5-coder:7b }
+      - { provider: ollama,   model: qwen2.5:7b }
 
   grading:
     description: "Evidence sufficiency scoring (A12). Highest call volume — needs cheap and fast."

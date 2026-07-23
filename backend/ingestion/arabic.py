@@ -128,30 +128,48 @@ _ARABIZI_DIGITS = {
     "9": "ص",  # sad
 }
 
-_ARABIZI_WORDS = {
+# Words that are DISTINCTLY Arabizi — they do not occur in ordinary English.
+# Seeing one is strong evidence the user is writing Arabic in Latin script.
+_ARABIZI_MARKERS = {
     "3ala": "على",
     "3an": "عن",
     "3and": "عند",
     "wein": "وين",
+    "wain": "وين",
     "fein": "فين",
     "shu": "شو",
+    "shoo": "شو",
     "kam": "كم",
     "mahatta": "محطة",
     "mahatat": "محطات",
-    "metro": "مترو",
-    "bus": "باص",
-    "taxi": "تاكسي",
-    "tram": "ترام",
     "sikka": "سكة",
     "tareeq": "طريق",
     "khat": "خط",
     "as3ar": "أسعار",
     "se3r": "سعر",
     "kaif": "كيف",
-    "wain": "وين",
+    "keef": "كيف",
     "aqrab": "أقرب",
     "arkhas": "أرخص",
+    "yalla": "يلا",
+    "min": "من",
+    "ila": "إلى",
 }
+
+# Transit loanwords. These are used when transliterating text ALREADY judged to
+# be Arabizi, but must never trigger that judgement themselves — "metro", "bus"
+# and "taxi" are ordinary English, and treating them as Arabizi markers made
+# every English sentence containing "metro" get answered in Arabic.
+_ARABIZI_LOANWORDS = {
+    "metro": "مترو",
+    "bus": "باص",
+    "taxi": "تاكسي",
+    "tram": "ترام",
+    "nol": "نول",
+    "salik": "سالك",
+}
+
+_ARABIZI_WORDS = {**_ARABIZI_MARKERS, **_ARABIZI_LOANWORDS}
 
 _ARABIZI_TOKEN = re.compile(r"\b[a-z]*[23456789][a-z0-9]*\b", re.IGNORECASE)
 
@@ -166,7 +184,9 @@ def looks_like_arabizi(text: str) -> bool:
     if has_arabic(text):
         return False
     lowered = text.lower()
-    if any(word in lowered.split() for word in _ARABIZI_WORDS):
+    tokens = {t.strip(".,!?;:") for t in lowered.split()}
+    # Only distinctly-Arabizi words count as evidence — see _ARABIZI_LOANWORDS.
+    if tokens & set(_ARABIZI_MARKERS):
         return True
     for match in _ARABIZI_TOKEN.finditer(lowered):
         token = match.group()
