@@ -1,0 +1,37 @@
+# Masar AI — reverse proxy + automatic HTTPS.
+#
+# Caddy terminates TLS on the free hostname in $MASAR_HOSTNAME (Let's Encrypt,
+# auto-renewed) and proxies to the API container on the compose network. The one
+# non-obvious line is `flush_interval -1`: without it Caddy buffers the response,
+# which is invisible for JSON and fatal for the SSE chat stream — the whole turn
+# would arrive at once, after it finished, so nothing ever appears live.
+#
+# Rate limiting is deliberately NOT here: the `rate_limit` directive needs the
+# caddy-ratelimit plugin (a custom xcaddy build), which Phase 4 adds. The stock
+# caddy:2 image runs this file as-is.
+
+{$MASAR_HOSTNAME} {
+	encode zstd gzip
+
+	reverse_proxy api:8000 {
+		# SSE must stream immediately and never be buffered.
+		flush_interval -1
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		# Don't advertise the server software.
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

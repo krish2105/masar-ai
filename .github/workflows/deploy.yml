@@ -1,0 +1,33 @@
+name: Deploy (VM)
+
+# Ships the backend to the Oracle VM by running deploy/deploy.sh over SSH — which
+# is itself health-gated and self-rolls-back. The Vercel frontend deploys itself
+# from main; this is only the backend.
+#
+# Manual by default (workflow_dispatch) so it never fails before the VM exists.
+# Once the three secrets below are set, uncomment the `push` trigger to deploy on
+# every backend change to main.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths: ["backend/**", "docker-compose.yml", "deploy/**", "requirements.txt"]
+
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Requires repo secrets: VM_SSH_KEY (private key), VM_HOST, VM_USER.
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_KEY }}
+
+      - name: Deploy over SSH (health-gated, self-rolling-back)
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            'bash ~/masar/deploy/deploy.sh'

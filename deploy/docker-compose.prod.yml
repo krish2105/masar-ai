@@ -1,0 +1,42 @@
+# Production overlay — adds Caddy (TLS + reverse proxy) in front of the API. The
+# base docker-compose.yml is otherwise run unchanged: the whole reason for the
+# always-on VM is that nothing about the validated stack has to change.
+#
+# Launch (from the repo root, on the VM):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml \
+#     --profile full up -d --build
+#
+# The `full` profile brings up postgres, redis, neo4j and the api; this overlay
+# adds caddy. Only 80/443 are reachable from outside the VM (the Oracle security
+# list + host iptables open nothing else); Caddy reaches the API over the compose
+# network.
+
+services:
+  caddy:
+    profiles: ["full"]
+    image: caddy:2
+    container_name: masar-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MASAR_HOSTNAME: ${MASAR_HOSTNAME:?set MASAR_HOSTNAME in .env, e.g. masar-api.duckdns.org}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - masar_caddydata:/data
+      - masar_caddyconfig:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+# The API keeps its base 8000 publish (Compose concatenates `ports` across
+# overlay files, so overriding it here would double-bind and fail). Public
+# reachability is closed at the firewall instead: the Oracle security list and
+# the host iptables open only 80/443, so 8000 is not reachable from outside the
+# VM. Caddy reaches the API over the compose network (service DNS), not the
+# published port.
+
+volumes:
+  masar_caddydata:
+  masar_caddyconfig:
