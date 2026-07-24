@@ -41,48 +41,77 @@ cloud keys** — the system's worst-case configuration. See
 `reports/eval/` for the machine-readable report.
 
 ```
-questions evaluated      8
+questions evaluated      8            (all JOURNEY_PLANNING / GEOSPATIAL)
 answered                 8
 
-metric                        value   threshold  gate
-intent_accuracy               0.750        0.90   ✗
-citation_validity             1.000        1.00   ✓
-numeric_accuracy              1.000        1.00   ✓
-p95_latency_s                128.47        8.00   ✗
-agent_activation              0.625          —
-must_not_violations               0           0   ✓
+metric                     before    after   threshold  gate
+intent_accuracy             0.750    0.750        0.90   ✗
+citation_validity           1.000    1.000        1.00   ✓
+numeric_accuracy            1.000    1.000        1.00   ✓
+p95_latency_s              128.47   102.58        8.00   ✗
+agent_activation            0.625    0.625          —
+must_not_violations             0        0           0   ✓
 
-corrective loop: 8/8 turns re-planned (100%), 8 hit the cycle cap
+corrective loop:   8/8 re-planned  ->  7/8 re-planned
 AR/EN pass-rate parity gap: 0.000
 reference_sql: {empty: 7, absent: 1}
 judged metrics: unavailable — requires a cloud provider
 ```
 
-### The finding that matters most: the loop fires on everything
+### The loop fired on everything — investigated and partly fixed
 
-**8 of 8 turns re-planned, and all 8 exhausted the cycle cap.**
+The first run had **8 of 8 turns exhaust the cycle cap**. Neither of the two
+obvious explanations (threshold too strict; local model pessimistic) survived
+contact with the evidence. Instrumenting the *per-axis* scores instead found
+three concrete defects, all the same shape:
 
-That is not the designed behaviour. The intent was that a meaningful minority of
-queries trigger a re-plan — the threshold was chosen so the loop corrects real
-insufficiency without tripling latency on every question. Firing 100% of the
-time and always hitting the cap is precisely the "too strict" failure mode the
-design was meant to avoid, and it is the single largest cause of the 128-second
-p95.
+> A deterministic scorer with **no signal** still returned a number, and because
+> A12 combines with `min()`, that number vetoed a sound model judgement.
 
-Two candidate explanations, not yet distinguished:
+| Defect | Evidence |
+|---|---|
+| `coverage` measured **lexical token overlap**. An Arabic question against English evidence scores 0 by construction — precisely what a cross-lingual embedding model is *for*. | A turn with specificity 0.9 and authority 0.8 scored coverage **0.0** |
+| `recency` was scored on questions that do not ask about time | `FARE_COST` failed on recency 0.5 with coverage 1.0 and specificity 0.97 |
+| `coverage` penalised question-framing words ("options", "reach", "get") | `EN-JP-005` scored 0.287 for missing words the answer needn't repeat |
 
-1. **The 0.7 threshold is too strict for evidence a 7B model assembles.** The
-   Grader's deterministic axes are computed the same way regardless of model,
-   but the *evidence* being scored is thinner when planning and SQL generation
-   are done by a small local model.
-2. **Local grading is systematically pessimistic.** A12 takes the *lower* of the
-   model and deterministic score on every axis. If `qwen2.5:7b` under-scores,
-   the conservative combination guarantees insufficiency.
+**The fix:** scorers return `AxisScore(value, detail, applicable)`. An
+inapplicable axis abstains — it raises no gap, is excluded from the sufficiency
+decision, and the model's value stands alone instead of being `min()`'d against
+noise. The value is still reported so the trace stays complete.
 
-Distinguishing them requires a cloud-key run — the same eight questions with
-Gemini planning and Groq grading. Until then the honest statement is: **the
-threshold is untuned for the local path, and the re-plan rate reported in the
-design (~18%) is not what this configuration does.**
+An instrument that cannot measure should abstain, not report zero.
+
+### Verified before and after, same baseline
+
+Per-intent sweep, one question per category:
+
+| Intent | Before | After |
+|---|---|---|
+| `FARE_COST` | 2 cycles, insufficient | **0 cycles, sufficient** |
+| `NETWORK_ANALYTICS` (ar) | 2 cycles, coverage **0.0** | **1 cycle, sufficient, coverage 0.80** |
+| `GEOSPATIAL` | **never reached the graph** (guardrail false positive) | runs |
+| `SERVICE_INFO` | 2 cycles | 2 cycles — **correctly**, it retrieves zero evidence |
+
+**Cycle-cap exhaustion 6/6 → 4/6.** On the original 8-question sample — which is
+*entirely* journey-planning and geospatial, the system's weakest category —
+8/8 → **7/8**, with p95 latency **128.5s → 102.6s**.
+
+The gap between those two numbers is the honest part: the fixes address scoring
+defects, and the 8-question sample is dominated by questions where the evidence
+is *genuinely* thin. `SERVICE_INFO` still exhausts the cap because the corpus
+contains no nol-replacement document — a data gap, not a grader bug. Tuning the
+threshold until those pass would make the loop decorative, which is the failure
+mode at the other end.
+
+### Still open
+
+The re-plan rate remains above the 15–25% target. The remaining causes are
+retrieval and corpus coverage, not scoring:
+
+- No service-procedure documents exist (the corpus is generated from held data,
+  by design — see GOVERNANCE.md).
+- A 7B local model plans thin sub-task DAGs; a cloud-key run is the next
+  measurement.
 
 ### The other two gate failures
 
@@ -201,9 +230,9 @@ properties of the code rather than of generation:
 
 ## Known evaluation gaps
 
-1. **The Grader threshold is untuned for the local path** — 100% re-plan rate,
-   100% cycle-cap exhaustion. This is a *failing* result, not a missing one, and
-   it is the first thing to fix.
+1. **The re-plan rate is still above target** (4/6 per-intent, 7/8 on the
+   hardest sample). The three *scoring* defects are fixed and verified; what
+   remains is retrieval and corpus coverage, which is a different problem.
 2. **Judged metrics are unmeasured** without cloud keys.
 3. **The full 60-question set has not been run** end to end; the sample is 8.
 4. **The ablation study has not been run.**
@@ -217,9 +246,8 @@ harness measured the loop rather than assuming it worked.
 
 ## Next actions, in order
 
-1. Re-run the same eight questions with a free Groq key. That single run
-   distinguishes "threshold too strict" from "local grading pessimistic", which
-   determines whether the fix is a threshold change or a grading change.
-2. Re-tune the threshold against the outcome, targeting a re-plan rate in the
-   15–25% range with cap exhaustion under 5%.
+1. Re-run with a free Groq key. The scoring defects are fixed; this measures
+   how much of the residual re-plan rate is thin planning by a 7B model.
+2. Add service-procedure documents to the corpus, which is the single largest
+   remaining coverage gap (`SERVICE_INFO` currently retrieves nothing).
 3. Run the full 60 questions, then the four-configuration ablation.

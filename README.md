@@ -95,7 +95,7 @@ Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | **API** | SSE streaming, trace, datasets, stats, map |
 | **Frontend** | Next.js 15, 5 routes, builds clean, **light and dark verified in-browser** |
 | **Tests** | **126 unit tests passing**, ruff clean |
-| **Eval** | 8-question sample on the local-only path: citation validity **1.00**, numeric accuracy **1.00**, zero `must_not` violations — **but the corrective loop fires on 100% of turns and always hits the cycle cap**, which is mis-tuned. See [EVALUATION.md](docs/EVALUATION.md). |
+| **Eval** | Local-only path: citation validity **1.00**, numeric accuracy **1.00**, zero `must_not` violations. Three grader defects found and fixed — cycle-cap exhaustion **6/6 → 4/6** per-intent, p95 **128s → 103s**. Residual re-plan rate is retrieval coverage, not scoring. See [EVALUATION.md](docs/EVALUATION.md). |
 
 Cross-lingual retrieval is verified empirically, not assumed: cosine similarity
 between `"Union Metro Station"` and `"محطة الاتحاد"` is **0.746** in the shared
