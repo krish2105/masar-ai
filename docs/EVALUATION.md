@@ -119,9 +119,9 @@ retrieval and corpus coverage, not scoring:
 sample is eight questions, so this is two misses, and one is arguably correct
 routing to a neighbouring intent. Not meaningful until the full set runs.
 
-**`p95_latency` 128s against an 8s threshold.** Every turn ran three planning
-cycles on a local 7B model. The 8-second budget assumes a single-cycle path on
-cloud inference; this is neither. It is a real number from a real run, reported
+**`p95_latency` 103s against an 8s threshold** (128s before the grader fix).
+Most turns still run multiple planning cycles on a local 7B model. The 8-second
+budget assumes a single-cycle path on cloud inference; this is neither. Reported
 as measured rather than adjusted to fit.
 
 ### What passed, and why it will keep passing
@@ -132,8 +132,6 @@ as measured rather than adjusted to fit.
 | `numeric_accuracy` | **1.000** | A11 is deterministic; A13 quotes verbatim |
 | `must_not_violations` | **0** | No answer claimed live data or invented an unsourced route |
 | AR/EN parity gap | **0.000** | Both languages answered; the sample is too small for this to be a real measurement |
-
-
 
 ### How to read these numbers
 
@@ -146,12 +144,16 @@ where a stronger model would move the numbers.
 ## The corrective loop
 
 The loop is the system's central claim, so its behaviour is measured rather than
-asserted — and the measurement above says it is currently **mis-tuned on the
-local path**, firing on 100% of turns and always exhausting the cap.
+asserted. Three properties, verified separately:
 
-What the loop demonstrably *does* do correctly is produce **actionable** gaps and
-a genuinely different plan. What it does not yet do is fire selectively. Those
-are separate properties, and only the first is currently verified.
+| Property | Status |
+|---|---|
+| Produces **actionable** gaps a planner can act on | ✅ verified (example below) |
+| Produces a genuinely **different** plan on re-plan | ✅ verified — an identical revision is detected and widened |
+| Fires **selectively** rather than on everything | ⚠️ improved (6/6 → 4/6 exhaustion) but still above the 15–25% target |
+
+The residual rate is retrieval and corpus coverage, not scoring — see the
+investigation above.
 
 A worked example from the sample run — question `EN-JP-002`, *"How do I get from
 Deira City Centre to Mall of the Emirates?"*:
