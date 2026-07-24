@@ -18,6 +18,7 @@ Intent alone is enough to build a reasonable plan, so the system still answers.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from backend.graph.state import EvidenceType, Intent, Plan, SubTask, ToolClass
@@ -59,9 +60,15 @@ sql      — query the star schema. Tables:
              dim_date(date_key, year, month, month_name_en, quarter)
            params: {"question": "<what to compute, in words>"}
 
-geo      — nearest stops/stations, distance, catchment, interchange count.
-           params: {"operation": "nearest|between|catchment",
-                    "place": "...", "destination": "...", "radius_km": 1.0}
+geo      — nearest stops/stations, distance, catchment, interchange count, and
+           multi-hop reachability over the route network (a graph traversal).
+           params: {"operation": "nearest|between|catchment|reachability",
+                    "place": "...", "destination": "...", "radius_km": 1.0,
+                    "interchanges": 2}
+           Use "reachability" for "how far can I get from X", "which stops are
+           within N interchanges of X", or multi-hop coverage questions. It
+           reports stops reachable within the given number of route changes,
+           with the routes — never a travel time.
 
 calc     — deterministic fare and toll arithmetic. NEVER compute money yourself.
            params: {"operation": "nol_fare|monthly_commute|salik|drive_vs_transit",
@@ -121,6 +128,50 @@ def _plan_signature(plan: Plan) -> str:
     )
 
 
+_WORD_NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4}
+# The defining phrase of a reachability question. Deliberately conservative:
+# a normal "nearest stop" geo query must NOT be misrouted to the graph, so we
+# require an explicit interchange/reachability cue AND a recoverable origin.
+_INTERCHANGE_RE = re.compile(
+    r"\b(?:within|in|up to|at most)\s+(\d+|zero|one|two|three|four)\s+"
+    r"(?:interchange|change|transfer|hop|connection|line)s?\b",
+    re.IGNORECASE,
+)
+_REACH_CUE_RE = re.compile(
+    r"reachab|how far can (?:i|you|one) (?:get|go|travel)|without changing|no interchange",
+    re.IGNORECASE,
+)
+_ORIGIN_RE = re.compile(
+    r"\b(?:from|of|around|near|starting at|out of)\s+(.+?)"
+    r"(?:\s+(?:within|in|with|by|using|can|could|are|is|reachable|without)\b|[?.!,]|$)",
+    re.IGNORECASE,
+)
+
+
+def detect_reachability(query: str) -> tuple[str, int] | None:
+    """Recognise a bounded-reachability question and extract (origin, interchanges).
+
+    Returns None when the query is not clearly a reachability question or no
+    origin can be recovered — in which case planning falls through to the normal
+    path rather than routing to the graph on a guess.
+    """
+    has_interchange = _INTERCHANGE_RE.search(query)
+    if not has_interchange and not _REACH_CUE_RE.search(query):
+        return None
+
+    if has_interchange:
+        raw = has_interchange.group(1).lower()
+        interchanges = int(raw) if raw.isdigit() else _WORD_NUMBERS.get(raw, 1)
+    else:
+        interchanges = 1  # "reachable from X" with no explicit count
+
+    origin_match = _ORIGIN_RE.search(query)
+    origin = origin_match.group(1).strip(" \t'\"") if origin_match else ""
+    if not origin or len(origin) < 2:
+        return None
+    return origin, max(0, min(interchanges, 4))
+
+
 class SupervisorAgent:
     def __init__(self, router=None) -> None:
         self.router = router
@@ -134,6 +185,35 @@ class SupervisorAgent:
         clever plan that never executes.
         """
         tasks: list[SubTask] = []
+
+        # Reachability is recognised deterministically so a "within N interchanges
+        # of X" question routes to the graph even on the degraded (no-model) path.
+        reachability = detect_reachability(query)
+        if reachability is not None:
+            origin, interchanges = reachability
+            return Plan(
+                sub_tasks=[
+                    SubTask(
+                        id="t1",
+                        description=f"Stops reachable within {interchanges} interchange(s) of {origin}",
+                        tool=ToolClass.GEO,
+                        params={
+                            "operation": "reachability",
+                            "place": origin,
+                            "interchanges": interchanges,
+                        },
+                    ),
+                    SubTask(
+                        id="t2",
+                        description="Search network reference for context",
+                        tool=ToolClass.RETRIEVE,
+                        params={"query": query},
+                    ),
+                ][:MAX_SUB_TASKS],
+                reasoning=f"Reachability question detected: within {interchanges} of {origin!r}.",
+                expected_evidence_types=[EvidenceType.GEO_RESULT],
+                cycle=cycle,
+            )
 
         if intent in (Intent.SERVICE_INFO, Intent.OUT_OF_SCOPE):
             tasks.append(

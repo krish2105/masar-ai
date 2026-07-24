@@ -64,6 +64,8 @@ from backend.graph.state import (
     ToolClass,
     new_state,
 )
+from backend.graph_rag.service import GraphReachability
+from backend.graph_rag.traversal import GraphError
 from backend.retrieval.hybrid import HybridRetriever
 from backend.services.logging import get_logger
 
@@ -86,6 +88,8 @@ class Agents:
     geo: GeospatialAgent
     grader: GraderAgent
     synthesis: SynthesisAgent
+    # Optional GraphRAG capability; None when Neo4j is unavailable.
+    graph: GraphReachability | None = None
     router: Any = None
 
 
@@ -104,6 +108,16 @@ def build_agents(router=None) -> Agents:
         geo=GeospatialAgent(settings.pg_dsn),
         grader=GraderAgent(router, threshold=settings.grader_threshold),
         synthesis=SynthesisAgent(router),
+        graph=(
+            GraphReachability.connect(
+                settings.neo4j_uri,
+                settings.neo4j_user,
+                settings.neo4j_password,
+                database=settings.neo4j_database,
+            )
+            if settings.graph_enabled
+            else None
+        ),
         router=router,
     )
 
@@ -156,9 +170,78 @@ async def _run_sql(agents: Agents, task: SubTask, state: MasarState) -> list[Evi
     ]
 
 
+async def _run_reachability(
+    agents: Agents, task: SubTask, state: MasarState, origin: str
+) -> list[Evidence]:
+    """GraphRAG: stops reachable within N interchanges, via the route graph."""
+    if agents.graph is None:
+        state.setdefault("sub_task_errors", {})[task.id] = (
+            "the reachability graph is unavailable (Neo4j not connected); "
+            "interchange-reachability cannot be computed"
+        )
+        return []
+
+    interchanges = int(task.params.get("interchanges", 1))
+    try:
+        reachables = await asyncio.to_thread(agents.graph.reachable, origin, interchanges)
+    except GraphError as exc:
+        state.setdefault("sub_task_errors", {})[task.id] = str(exc)
+        return []
+    except Exception as exc:
+        state.setdefault("sub_task_errors", {})[task.id] = f"{type(exc).__name__}: {exc}"
+        return []
+
+    if not reachables:
+        state.setdefault("sub_task_errors", {})[task.id] = (
+            f"no stops reachable within {interchanges} interchange(s) of {origin!r}"
+        )
+        return []
+
+    by_level: dict[int, int] = {}
+    for item in reachables:
+        by_level[item.interchanges] = by_level.get(item.interchanges, 0) + 1
+
+    lines = [
+        f"From {origin}: {len(reachables)} stop(s) reachable within {interchanges} interchange(s)."
+    ]
+    lines += [
+        f"  {count} stop(s) at {lvl} interchange(s)" for lvl, count in sorted(by_level.items())
+    ]
+    # Name the farthest-reached stops, with the routes that reach them (the path).
+    farthest = [r for r in reachables if r.interchanges == max(by_level)][:8]
+    for item in farthest:
+        lines.append(
+            f"  {item.stop.name} — {item.interchanges} change(s) via {', '.join(item.routes[:3])}"
+        )
+    lines.append(
+        "Reachability is by published route topology (interchange count), not travel "
+        "time — Masar holds no timetables, so it states neither duration nor frequency."
+    )
+
+    return [
+        Evidence(
+            content="\n".join(lines),
+            evidence_type=EvidenceType.GEO_RESULT,
+            source=Source(
+                id="",
+                type=EvidenceType.GEO_RESULT,
+                dataset_or_doc="bridge_route_stop (graph traversal)",
+                source_url="https://www.dubaipulse.gov.ae/",
+                row_id_or_chunk_id=f"{len(reachables)} reachable stops",
+                source_tier="archive",
+            ),
+            score=0.9,
+            sub_task_id=task.id,
+        )
+    ]
+
+
 async def _run_geo(agents: Agents, task: SubTask, state: MasarState) -> list[Evidence]:
     operation = str(task.params.get("operation", "nearest"))
     place = str(task.params.get("place") or state.get("sanitized_query", ""))
+
+    if operation == "reachability":
+        return await _run_reachability(agents, task, state, place)
 
     try:
         if operation == "between":
