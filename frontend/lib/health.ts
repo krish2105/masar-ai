@@ -27,13 +27,22 @@ export async function pingHealth(timeoutMs = 4000): Promise<boolean> {
   }
 }
 
-export type BackendStatus = "checking" | "online" | "offline";
+export type BackendStatus = "checking" | "online" | "warming" | "offline";
 
 /**
- * Pings on mount, then — only while offline — retries with a gentle linear
- * backoff so a backend that is still warming eventually flips the UI to online
- * without the visitor doing anything. Stops polling once online to avoid a
- * needless request every few seconds for the whole session.
+ * How many failed pings still count as a plausible cold start. Up to this many,
+ * the UI says "waking"; beyond it, the backend is treated as genuinely
+ * unreachable and the UI stops implying it is about to come up.
+ */
+const WARMING_MAX_ATTEMPTS = 2;
+
+/**
+ * Pings on mount and distinguishes three failure regimes so the UI can be
+ * honest: a plausible cold start ("warming"), and a backend that simply is not
+ * there ("offline") — important on the deployed site before the backend is
+ * hosted, where "waking the agents" forever would read as a warm-up when it is
+ * really an outage. Keeps slow-polling while offline so a later go-live is
+ * picked up automatically, without hammering an absent origin.
  */
 export function useBackendStatus(): BackendStatus {
   const [status, setStatus] = useState<BackendStatus>("checking");
@@ -44,15 +53,18 @@ export function useBackendStatus(): BackendStatus {
     let timer: ReturnType<typeof setTimeout>;
 
     const tick = async () => {
-      const ok = await pingHealth();
+      const ok = await pingHealth(3000);
       if (cancelled) return;
       if (ok) {
         setStatus("online");
         return; // stop polling once reachable
       }
       attempt += 1;
-      setStatus("offline");
-      timer = setTimeout(tick, Math.min(2000 + attempt * 1500, 8000));
+      const warming = attempt <= WARMING_MAX_ATTEMPTS;
+      setStatus(warming ? "warming" : "offline");
+      // Quick retries while plausibly warming; a slow poll once we conclude the
+      // backend is absent, so a Phase-1 go-live still flips the UI to online.
+      timer = setTimeout(tick, warming ? 2500 : 20000);
     };
 
     tick();
