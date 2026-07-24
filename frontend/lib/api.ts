@@ -122,8 +122,14 @@ export async function streamChat(
 }
 
 async function getJson<T>(path: string): Promise<T | null> {
+  // Hit the backend origin directly (with CORS), NOT the Next.js `/api/*`
+  // rewrite. The rewrite targets 127.0.0.1:8000, which exists only in local
+  // dev; on the deployed frontend it points at nothing, so every non-streaming
+  // call (stats, datasets, map, trace) would silently fail — which is exactly
+  // why the Explore/Data pages showed "could not reach the warehouse" in
+  // production while the SSE chat (which already used STREAM_BASE) worked.
   try {
-    const response = await fetch(path);
+    const response = await fetch(`${STREAM_BASE}${path}`, { cache: "no-store" });
     if (!response.ok) return null;
     return (await response.json()) as T;
   } catch {
