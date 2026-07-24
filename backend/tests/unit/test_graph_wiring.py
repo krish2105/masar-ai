@@ -30,6 +30,9 @@ class TestDetectReachability:
             ("stops reachable from Al Qusais within three changes", "Al Qusais", 3),
             ("How far can I get from BurJuman?", "BurJuman", 1),
             ("what is reachable within one transfer of Deira City Centre", "Deira City Centre", 1),
+            # "without changing" / "without a transfer" is zero interchanges.
+            ("How far can I get from Al Ghubaiba without changing routes?", "Al Ghubaiba", 0),
+            ("Which stops are reachable from Gold Souq without a transfer?", "Gold Souq", 0),
         ],
     )
     def test_recognises_reachability(self, query: str, origin: str, interchanges: int) -> None:

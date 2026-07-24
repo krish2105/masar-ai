@@ -30,16 +30,22 @@ meta:
   version: "1.0.0"
   project: "Masar AI"
   created: "2026-07-24"
-  total_scored: 60
+  total_scored: 66
   total_adversarial: 12
-  language_split: { en: 30, ar: 30 }
+  language_split: { en: 36, ar: 30 }
   intent_distribution:
     JOURNEY_PLANNING: 10
     FARE_COST: 10
     SERVICE_INFO: 10
     NETWORK_ANALYTICS: 12
-    GEOSPATIAL: 8
+    GEOSPATIAL: 14
     MULTI_HOP: 10
+  graphrag_reachability_note: >
+    6 of the GEOSPATIAL questions (EN-RCH-061..066, added in Phase 5) require the
+    Neo4j reachability graph. Until it is loaded they surface a named gap
+    ("reachability graph unavailable") — honest degradation, not a pass. They are
+    English-only because the route↔stop graph is keyed on English stop names.
+    The original validated set is the 60 non-RCH questions.
 
 # ------------------------------------------------------------------------------
 # GOLD SCHEMA REFERENCE — all reference_sql below assumes exactly this schema.
@@ -1423,6 +1429,143 @@ questions:
   cross_language_pair: EN-MH-055
   must_not:
     - "Present the recommendation as RTA policy"
+
+# ------------------------------------------------------------------------------
+# REACHABILITY / GRAPHRAG (Phase 5) — 6 (EN only)
+# These exercise the bounded route↔stop graph traversal (A10 GEO "reachability"
+# operation, backend.graph_rag.reachable_within): "which stops are within N
+# interchanges of X". They REQUIRE Neo4j — until the graph is loaded they surface
+# a named gap ("reachability graph unavailable"), which is the honest degraded
+# behaviour, not a crash.
+#
+# English only, deliberately: the graph is keyed on `bridge_route_stop.stop_name_en`
+# (the gold layer carries no Arabic stop names), so an Arabic origin cannot resolve
+# today. Arabic reachability is a documented gap pending Arabic names in the graph.
+# Ground truth is expressed as semantic assertions, never a hardcoded stop list —
+# the reachable set is validated against the loaded graph at eval time.
+# ------------------------------------------------------------------------------
+
+- id: EN-RCH-061
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: medium
+  question: "Which stops are within one interchange of Union station?"
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: bounded BFS over the SERVED_BY route↔stop graph from Union, one route change = one interchange (backend.graph_rag.reachable_within)."
+    expected_assertions:
+      - "Names specific stops reachable within one interchange, drawn from the route graph"
+      - "Reports the interchange count (route changes), not a travel time"
+      - "Cites the route(s) that make the stops reachable"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "State a travel time or duration for reaching any stop"
+    - "Claim live or current vehicle positions or service status"
+    - "Invent stops or routes not present in the graph"
+
+- id: EN-RCH-062
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: medium
+  question: "Which stops can I reach from Al Qusais within two interchanges?"
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: BFS from Al Qusais, at most two route changes."
+    expected_assertions:
+      - "Lists stops reachable within two interchanges, grouped or noted by how many changes each needs"
+      - "Distinguishes zero-, one- and two-interchange stops rather than lumping them together"
+      - "Reports interchange count, never a journey time"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "State a travel time or frequency"
+    - "Assert real-time service status"
+    - "Invent stops or routes"
+
+- id: EN-RCH-063
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: easy
+  question: "How far can I get from Al Ghubaiba bus station without changing routes?"
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: zero-interchange reachability — stops sharing a route with Al Ghubaiba."
+    expected_assertions:
+      - "Lists only stops reachable with no route change (zero interchanges)"
+      - "Names the route(s) those stops share with the origin"
+      - "Does not claim a travel time"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "Include stops that need a route change"
+    - "State a duration or live status"
+
+- id: EN-RCH-064
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: hard
+  question: "List the stops reachable within three interchanges of Gold Souq."
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: BFS from Gold Souq, at most three route changes (capped)."
+    expected_assertions:
+      - "Reports stops reachable within three interchanges from the graph"
+      - "Notes if the result set is truncated rather than presenting it as exhaustive"
+      - "Reports interchange counts, not travel times"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "State a travel time"
+    - "Present a truncated list as complete without saying so"
+    - "Invent stops or routes"
+
+- id: EN-RCH-065
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: medium
+  question: "How many stops are within two interchanges of Ibn Battuta?"
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: count of distinct stops reachable within two interchanges of Ibn Battuta."
+    expected_assertions:
+      - "Gives a specific count of reachable stops, computed from the graph"
+      - "States the count is within two interchanges (route changes), not within a time or distance"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "Report the figure as a travel time or a distance"
+    - "Invent a count not derived from the graph"
+
+- id: EN-RCH-066
+  lang: en
+  intent: GEOSPATIAL
+  difficulty: medium
+  question: "Which stops are reachable from Deira City Centre with at most one change?"
+  eval_method: assertion
+  requires_graph: true
+  ground_truth:
+    computation: "GraphRAG: BFS from Deira City Centre, at most one route change."
+    expected_assertions:
+      - "Names stops reachable with zero or one interchange"
+      - "Attributes each reachable stop to the route(s) that reach it"
+      - "Reports interchange count, not travel time"
+  required_sources:
+    - dataset: "rta_public_transportation_routes_stops-open"
+  must_trigger_agents: [A3, A4, A10]
+  must_not:
+    - "Include stops needing two or more changes"
+    - "State a duration or live status"
 
 # ==============================================================================
 # ADVERSARIAL SET — 12 QUESTIONS (UNSCORED, BUT A HARD PHASE-6 GATE)

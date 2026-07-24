@@ -141,6 +141,12 @@ _REACH_CUE_RE = re.compile(
     r"reachab|how far can (?:i|you|one) (?:get|go|travel)|without changing|no interchange",
     re.IGNORECASE,
 )
+# "direct" reachability — zero route changes.
+_NO_CHANGE_RE = re.compile(
+    r"without (?:a )?(?:change|changing|interchange|transfer)|no (?:change|interchange|transfer)"
+    r"|same route|on a single route|directly",
+    re.IGNORECASE,
+)
 _ORIGIN_RE = re.compile(
     r"\b(?:from|of|around|near|starting at|out of)\s+(.+?)"
     r"(?:\s+(?:within|in|with|by|using|can|could|are|is|reachable|without)\b|[?.!,]|$)",
@@ -159,7 +165,9 @@ def detect_reachability(query: str) -> tuple[str, int] | None:
     if not has_interchange and not _REACH_CUE_RE.search(query):
         return None
 
-    if has_interchange:
+    if _NO_CHANGE_RE.search(query):
+        interchanges = 0  # "without changing" / "on a single route"
+    elif has_interchange:
         raw = has_interchange.group(1).lower()
         interchanges = int(raw) if raw.isdigit() else _WORD_NUMBERS.get(raw, 1)
     else:
