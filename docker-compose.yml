@@ -95,7 +95,13 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      # Loopback-only. In prod Caddy reaches the API over the compose network
+      # (reverse_proxy api:8000), and the deploy health-check curls localhost —
+      # neither needs a public bind. Publishing on 0.0.0.0 would put the API
+      # straight on the internet: Docker's DNAT bypasses host iptables, so only
+      # the cloud security list would stand between it and the world, and a
+      # direct hit bypasses Caddy (and the per-IP rate limit's X-Real-IP trust).
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./data:/app/data
       - ./reports:/app/reports

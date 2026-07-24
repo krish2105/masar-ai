@@ -30,12 +30,13 @@ services:
       api:
         condition: service_healthy
 
-# The API keeps its base 8000 publish (Compose concatenates `ports` across
-# overlay files, so overriding it here would double-bind and fail). Public
-# reachability is closed at the firewall instead: the Oracle security list and
-# the host iptables open only 80/443, so 8000 is not reachable from outside the
-# VM. Caddy reaches the API over the compose network (service DNS), not the
-# published port.
+# The API's base publish is loopback-only ("127.0.0.1:8000:8000"), so 8000 is
+# never on a public interface here — no reliance on the cloud security list as
+# the sole gate (Docker's DNAT bypasses host iptables, so that would be a single
+# fragile layer). Caddy reaches the API over the compose network (reverse_proxy
+# api:8000), and the deploy health-check curls localhost:8000; neither needs the
+# port to be public. The Oracle security list opening only 80/443 is now
+# defence-in-depth, not the thing standing between the API and the internet.
 
 volumes:
   masar_caddydata:
