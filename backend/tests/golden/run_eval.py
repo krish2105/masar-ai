@@ -47,6 +47,7 @@ from backend.config.settings import get_settings
 from backend.graph.builder import MasarGraph, build_agents
 from backend.services.llm_router import get_router
 from backend.services.logging import configure_logging, get_logger
+from backend.tests.golden.judged_metrics import Sample, evaluate_samples
 
 log = get_logger(__name__)
 
@@ -64,6 +65,8 @@ THRESHOLDS = {
 }
 
 _CITATION = re.compile(r"\[S(\d+)\]")
+
+JUDGED_KEYS = ("faithfulness", "answer_relevancy", "context_precision")
 
 
 @dataclass
@@ -83,6 +86,7 @@ class QuestionResult:
     must_not_violations: list[str] = field(default_factory=list)
     replan_cycles: int = 0
     evidence_count: int = 0
+    contexts: list[str] = field(default_factory=list)
     confidence: str = ""
     error: str = ""
     reference_sql_status: str = "not_run"
@@ -153,7 +157,9 @@ def check_must_not(answer: str, rules: list[str]) -> list[str]:
     return violations
 
 
-async def evaluate_question(graph: MasarGraph, item: dict[str, Any], dsn: str) -> QuestionResult:
+async def evaluate_question(
+    graph: MasarGraph, item: dict[str, Any], dsn: str, *, max_cycles: int | None = None
+) -> QuestionResult:
     ground_truth = item.get("ground_truth") or {}
     result = QuestionResult(
         id=item["id"],
@@ -167,7 +173,7 @@ async def evaluate_question(graph: MasarGraph, item: dict[str, Any], dsn: str) -
 
     started = time.perf_counter()
     try:
-        state, tracer = await graph.run_turn(item["question"])
+        state, tracer = await graph.run_turn(item["question"], max_cycles=max_cycles)
     except Exception as exc:
         result.error = f"{type(exc).__name__}: {exc}"[:200]
         result.latency_s = time.perf_counter() - started
@@ -177,7 +183,9 @@ async def evaluate_question(graph: MasarGraph, item: dict[str, Any], dsn: str) -
     result.answer = state.get("answer", "")
     result.intent_actual = str(state.get("intent", ""))
     result.replan_cycles = state.get("cycle", 0)
-    result.evidence_count = len(state.get("evidence", []))
+    evidence = state.get("evidence", [])
+    result.evidence_count = len(evidence)
+    result.contexts = [e.content for e in evidence]
     result.confidence = str(state.get("confidence", ""))
     result.agents_used = tracer.summary()["agents_used"]
     result.agents_missing = [a for a in result.agents_required if a not in result.agents_used]
@@ -343,6 +351,39 @@ def print_report(report: dict[str, Any]) -> None:
     print()
 
 
+async def compute_judged_metrics(router: Any, results: list[QuestionResult]) -> dict[str, Any]:
+    """RAGAS-style judged metrics over the answered questions.
+
+    The judge walks the router's `judge` task-class fallback chain; relevancy
+    embeds with the same local bge-m3 model the retriever uses. A judge outage
+    degrades to `unavailable` rather than failing the whole run.
+    """
+    from backend.retrieval.embedder import embed_texts
+
+    samples = [
+        Sample(question=r.question, answer=r.answer, contexts=r.contexts, lang=r.lang)
+        for r in results
+        if r.answer.strip() and not r.error
+    ]
+    if not samples:
+        return dict.fromkeys(JUDGED_KEYS, "unavailable — no answers to judge")
+
+    def embed(texts: Any) -> list[list[float]]:
+        return embed_texts(list(texts)).tolist()
+
+    try:
+        metrics = await evaluate_samples(router.complete_json, embed, samples)
+    except Exception as exc:  # a judge outage must never fail the whole eval
+        log.warning("eval.ragas_failed", error=f"{type(exc).__name__}: {exc}")
+        return {k: f"unavailable — judge error: {type(exc).__name__}" for k in JUDGED_KEYS}
+
+    metrics["note"] = (
+        f"Computed over {len(samples)} answered question(s) via the LLM judge + local "
+        "bge-m3 embeddings. Empty answers/contexts abstain to 0.0, never a passing score."
+    )
+    return metrics
+
+
 async def main(argv: list[str] | None = None) -> int:
     configure_logging()
     parser = argparse.ArgumentParser(description="Masar AI — golden set evaluation")
@@ -353,6 +394,11 @@ async def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--intent", default=None)
     parser.add_argument(
         "--sql-only", action="store_true", help="only check reference_sql compatibility"
+    )
+    parser.add_argument(
+        "--ragas",
+        action="store_true",
+        help="also compute the judged metrics (faithfulness/relevancy/precision) via the LLM judge",
     )
     args = parser.parse_args(argv)
 
@@ -402,9 +448,12 @@ async def main(argv: list[str] | None = None) -> int:
             f"· {'PASS' if result.passed else 'FAIL'}"
         )
 
-    await llm_router.aclose()
-
     report = summarise(results, golden)
+
+    if args.ragas:
+        report["judged_metrics"] = await compute_judged_metrics(llm_router, results)
+
+    await llm_router.aclose()
     settings.eval_report_dir.mkdir(parents=True, exist_ok=True)
     path = settings.eval_report_dir / f"{datetime.now(tz=UTC).strftime('%Y-%m-%d')}.json"
     path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

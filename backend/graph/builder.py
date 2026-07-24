@@ -422,9 +422,12 @@ _EXECUTORS: dict[ToolClass, Callable] = {
 # =============================================================================
 
 
-def make_graph(agents: Agents, tracer: Tracer | None = None):
+def make_graph(agents: Agents, tracer: Tracer | None = None, *, max_cycles: int | None = None):
     settings = get_settings()
-    max_cycles = settings.max_replan_cycles
+    # max_cycles=0 disables the corrective loop entirely (single-pass) — used by
+    # the ablation study to isolate the agentic loop's contribution. Falls back
+    # to the configured cap when not overridden.
+    max_cycles = settings.max_replan_cycles if max_cycles is None else max_cycles
 
     def _trace(agent_id: str, **kwargs) -> None:
         if tracer is not None:
@@ -692,7 +695,12 @@ class MasarGraph:
         self.settings = get_settings()
 
     async def run_turn(
-        self, query: str, *, session_id: str | None = None, turn_id: str | None = None
+        self,
+        query: str,
+        *,
+        session_id: str | None = None,
+        turn_id: str | None = None,
+        max_cycles: int | None = None,
     ) -> tuple[MasarState, Tracer]:
         session_id = session_id or str(uuid.uuid4())
         turn_id = turn_id or str(uuid.uuid4())
@@ -703,7 +711,7 @@ class MasarGraph:
             trace_dir=self.settings.trace_dir,
             dsn=self.settings.pg_dsn,
         )
-        compiled = make_graph(self.agents, tracer)
+        compiled = make_graph(self.agents, tracer, max_cycles=max_cycles)
         state = new_state(session_id=session_id, turn_id=turn_id, raw_query=query)
 
         if self.agents.router is not None:

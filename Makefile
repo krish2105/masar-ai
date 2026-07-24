@@ -59,11 +59,14 @@ etl: ingest silver gold index ## Run the full offline pipeline end to end
 	@echo "✓ lakehouse built — bronze → silver → gold → indexed"
 
 # ----------------------------------------------------------------- eval ----
-eval: ## Phase 10 — golden set + RAGAS metrics (fails below §8.2 thresholds)
+eval: ## Phase 10 — golden set + RAGAS judged metrics (fails below §8.2 thresholds)
+	$(PY) -m backend.tests.golden.run_eval --ragas
+
+eval-fast: ## Golden set, deterministic metrics only (no LLM judge)
 	$(PY) -m backend.tests.golden.run_eval
 
-ablation: ## Four-config ablation study → docs/EVALUATION.md
-	$(PY) -m backend.tests.golden.run_ablation
+ablation: ## Four-config ablation study → reports/eval/ablation-<date>.md
+	$(PY) -m backend.tests.golden.ablation
 
 # ----------------------------------------------------------- dev / test ----
 test: ## Run the backend test suite

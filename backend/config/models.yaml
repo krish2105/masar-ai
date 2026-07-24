@@ -91,6 +91,16 @@ task_classes:
       - { provider: cerebras, model: llama-3.3-70b }
       - { provider: ollama,   model: qwen2.5:7b }
 
+  judge:
+    description: "Offline eval judge — RAGAS-style faithfulness/relevancy/precision. High volume (per-claim), so cheap-and-plentiful Groq first; Gemini as the quality fallback."
+    temperature: 0.0
+    max_tokens: 1024
+    chain:
+      - { provider: groq,     model: llama-3.3-70b-versatile }
+      - { provider: gemini,   model: gemini-2.5-flash }
+      - { provider: cerebras, model: llama-3.3-70b }
+      - { provider: ollama,   model: qwen2.5:7b }
+
   rewrite:
     description: "Query rewriting — HyDE, expansion, cross-language mirror (A5)."
     temperature: 0.3
