@@ -30,6 +30,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from backend.ingestion.arabic import has_arabic, has_latin
 from backend.graph.state import Evidence, EvidenceType, GradeReport
 from backend.services.logging import get_logger
 
@@ -89,90 +90,190 @@ class GradeResult:
     axis_detail: dict[str, str] = field(default_factory=dict)
 
 
-def _coverage_score(question: str, evidence: list[Evidence]) -> tuple[float, str]:
-    """How much of the question's content vocabulary appears in the evidence."""
+@dataclass(slots=True)
+class AxisScore:
+    """One axis, plus whether the instrument that produced it had any signal.
+
+    `applicable=False` means "this scorer cannot measure this input" — not
+    "this input scored zero". The distinction is load-bearing: an inapplicable
+    deterministic score combined with `min()` let a scorer with no signal veto a
+    sound model judgement, which is what drove every Arabic question to the
+    re-plan cap.
+    """
+
+    value: float
+    detail: str
+    applicable: bool = True
+
+
+# Words that describe how a question is *asked*, not what it is about. Evidence
+# answering "what are my options to reach X" has no reason to contain "options"
+# or "reach"; penalising it for that measures the wrong thing.
+_FRAMING_WORDS = {
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "was",
+    "were",
+    "and",
+    "or",
+    "of",
+    "to",
+    "in",
+    "on",
+    "for",
+    "from",
+    "how",
+    "what",
+    "which",
+    "who",
+    "when",
+    "where",
+    "much",
+    "many",
+    "do",
+    "does",
+    "did",
+    "i",
+    "my",
+    "me",
+    "it",
+    "at",
+    "by",
+    "with",
+    "get",
+    "getting",
+    "go",
+    "going",
+    "reach",
+    "take",
+    "takes",
+    "use",
+    "using",
+    "options",
+    "option",
+    "way",
+    "ways",
+    "there",
+    "any",
+    "can",
+    "could",
+    "would",
+    "should",
+    "please",
+    "tell",
+    "show",
+    "give",
+    "know",
+    "need",
+    "want",
+    "about",
+    "best",
+    "available",
+    "possible",
+    "public",
+    "transport",
+    "transportation",
+    "dubai",
+    "uae",
+    "you",
+    "your",
+}
+
+
+def _content_terms(text: str) -> set[str]:
+    return {w for w in re.findall(r"\b\w{3,}\b", text.lower()) if w not in _FRAMING_WORDS}
+
+
+def _coverage_score(question: str, evidence: list[Evidence]) -> AxisScore:
+    """How much of the question's content appears in the evidence.
+
+    This is a **lexical** measure, and lexical overlap only carries meaning when
+    question and evidence share a script. An Arabic question against English
+    evidence scores zero by construction — exactly the situation a cross-lingual
+    embedding model is designed to produce — so measuring it would penalise the
+    architecture working correctly. There, the axis abstains.
+    """
     if not evidence:
-        return 0.0, "no evidence retrieved"
+        # A real measurement, not an abstention: no evidence is insufficient.
+        return AxisScore(0.0, "no evidence retrieved", applicable=True)
 
-    stopwords = {
-        "the",
-        "a",
-        "an",
-        "is",
-        "are",
-        "was",
-        "were",
-        "and",
-        "or",
-        "of",
-        "to",
-        "in",
-        "on",
-        "for",
-        "from",
-        "how",
-        "what",
-        "which",
-        "who",
-        "when",
-        "where",
-        "much",
-        "many",
-        "do",
-        "does",
-        "i",
-        "my",
-        "me",
-        "it",
-        "at",
-        "by",
-        "with",
-    }
-    terms = {w for w in re.findall(r"\b\w{3,}\b", question.lower()) if w not in stopwords}
+    blob = " ".join(e.content for e in evidence)
+    question_arabic = has_arabic(question)
+
+    if question_arabic and not has_arabic(blob):
+        return AxisScore(
+            0.0,
+            "Arabic question against English evidence — lexical overlap has no "
+            "signal across scripts; deferring to the model on this axis",
+            applicable=False,
+        )
+    if not question_arabic and has_arabic(blob) and not has_latin(blob):
+        return AxisScore(
+            0.0,
+            "English question against Arabic-only evidence — lexical overlap has "
+            "no signal across scripts; deferring to the model on this axis",
+            applicable=False,
+        )
+
+    terms = _content_terms(question)
     if not terms:
-        return 0.6, "question carried no distinctive terms"
+        return AxisScore(0.0, "question carried no distinctive content terms", applicable=False)
 
-    blob = " ".join(e.content for e in evidence).lower()
-    found = {t for t in terms if t in blob}
+    lowered = blob.lower()
+    found = {t for t in terms if t in lowered}
     ratio = len(found) / len(terms)
     missing = sorted(terms - found)[:5]
     detail = f"{len(found)}/{len(terms)} question terms present"
     if missing:
         detail += f"; absent: {', '.join(missing)}"
-    return min(1.0, ratio * 1.15), detail
+    return AxisScore(min(1.0, ratio * 1.15), detail)
 
 
-def _specificity_score(evidence: list[Evidence]) -> tuple[float, str]:
+def _specificity_score(evidence: list[Evidence]) -> AxisScore:
     if not evidence:
-        return 0.0, "no evidence"
+        return AxisScore(0.0, "no evidence", applicable=True)
     with_numbers = sum(1 for e in evidence if _NUMBER.search(e.content))
     has_computed = any(
         e.evidence_type in (EvidenceType.CALC_RESULT, EvidenceType.SQL_RESULT) for e in evidence
     )
     ratio = with_numbers / len(evidence)
-    score = min(1.0, ratio + (0.3 if has_computed else 0.0))
-    return score, f"{with_numbers}/{len(evidence)} items carry figures" + (
+    value = min(1.0, ratio + (0.3 if has_computed else 0.0))
+    detail = f"{with_numbers}/{len(evidence)} items carry figures" + (
         "; includes computed or queried values" if has_computed else ""
     )
+    return AxisScore(value, detail)
 
 
-def _recency_score(question: str, evidence: list[Evidence]) -> tuple[float, str]:
-    """Recency matters only when the question is time-sensitive.
+def _recency_score(question: str, evidence: list[Evidence]) -> AxisScore:
+    """Recency, but only where recency is a meaningful question.
 
-    Penalising a "what is a nol card" answer for citing 2022 documentation would
-    be nonsense, so the axis is neutral-high unless the question asks about
-    trends, current state or a specific recent year.
+    Asking "what does a Salik crossing cost" is not a question about change over
+    time, so there is nothing for this axis to measure. It previously returned a
+    neutral-high 0.85, which `min()` then let a pessimistic model score of 0.5
+    override — failing a bundle whose coverage was 1.0 and specificity 0.97.
+    Where the axis does not apply it now abstains outright.
     """
     time_sensitive = bool(
         re.search(
-            r"\b(trend|recent|current|latest|now|today|this year|growth|change|"
-            r"20(2[3-9])|اتجاه|حالي|الأخير)\b",
+            r"\b(trend|trends|trended|recent|recently|current|currently|latest|now|"
+            r"today|trajectory|growth|decline|change|changed|over time|"
+            r"20(2[3-9]))\b|اتجاه|حالي|الأخير|تطور",
             question,
             re.IGNORECASE,
         )
     )
     if not time_sensitive:
-        return 0.85, "question is not time-sensitive"
+        return AxisScore(
+            1.0,
+            "question does not ask about change over time; recency is not a meaningful axis here",
+            applicable=False,
+        )
+
+    if not evidence:
+        return AxisScore(0.0, "no evidence", applicable=True)
 
     years: list[int] = []
     for item in evidence:
@@ -181,17 +282,17 @@ def _recency_score(question: str, evidence: list[Evidence]) -> tuple[float, str]
             years.extend(int(y) for y in _YEAR.findall(item.source.captured_at))
 
     if not years:
-        return 0.3, "time-sensitive question but evidence carries no dates"
+        return AxisScore(0.3, "time-sensitive question but evidence carries no dates")
 
     newest = max(years)
     age = datetime.now(tz=UTC).year - newest
-    score = 1.0 if age <= 1 else 0.75 if age <= 2 else 0.5 if age <= 4 else 0.25
-    return score, f"newest evidence year {newest} ({age} years old)"
+    value = 1.0 if age <= 1 else 0.75 if age <= 2 else 0.5 if age <= 4 else 0.25
+    return AxisScore(value, f"newest evidence year {newest} ({age} years old)")
 
 
-def _authority_score(evidence: list[Evidence]) -> tuple[float, str]:
+def _authority_score(evidence: list[Evidence]) -> AxisScore:
     if not evidence:
-        return 0.0, "no evidence"
+        return AxisScore(0.0, "no evidence", applicable=True)
     scores = [_AUTHORITY.get(e.evidence_type, 0.5) for e in evidence]
     best = max(scores)
     mean = sum(scores) / len(scores)
@@ -199,7 +300,7 @@ def _authority_score(evidence: list[Evidence]) -> tuple[float, str]:
     # answer that a dozen weak documents cannot.
     combined = 0.6 * best + 0.4 * mean
     kinds = ", ".join(sorted({str(e.evidence_type) for e in evidence}))
-    return combined, f"evidence types present: {kinds}"
+    return AxisScore(combined, f"evidence types present: {kinds}")
 
 
 class GraderAgent:
@@ -207,56 +308,62 @@ class GraderAgent:
         self.router = router
         self.threshold = threshold
 
+    def score_axes(self, question: str, evidence: list[Evidence]) -> dict[str, AxisScore]:
+        return {
+            "coverage": _coverage_score(question, evidence),
+            "specificity": _specificity_score(evidence),
+            "recency": _recency_score(question, evidence),
+            "source_authority": _authority_score(evidence),
+        }
+
     def grade_deterministic(
         self, question: str, evidence: list[Evidence], cycle: int
     ) -> GradeResult:
-        coverage, coverage_detail = _coverage_score(question, evidence)
-        specificity, specificity_detail = _specificity_score(evidence)
-        recency, recency_detail = _recency_score(question, evidence)
-        authority, authority_detail = _authority_score(evidence)
+        axes = self.score_axes(question, evidence)
 
         gaps: list[str] = []
         if not evidence:
             gaps.append("No evidence was retrieved at all — every sub-task returned empty.")
         else:
-            if coverage < self.threshold:
-                gaps.append(f"Evidence does not cover the whole question: {coverage_detail}.")
-            if specificity < self.threshold:
+            # An inapplicable axis raises no gap. A scorer with no signal has
+            # nothing to complain about.
+            if axes["coverage"].applicable and axes["coverage"].value < self.threshold:
+                gaps.append(
+                    f"Evidence does not cover the whole question: {axes['coverage'].detail}."
+                )
+            if axes["specificity"].applicable and axes["specificity"].value < self.threshold:
                 gaps.append(
                     "Evidence is general rather than specific — no concrete figures, "
                     "named stations or routes were retrieved."
                 )
-            if recency < self.threshold:
+            if axes["recency"].applicable and axes["recency"].value < self.threshold:
                 gaps.append(
-                    f"Evidence may be too old for a time-sensitive question: {recency_detail}."
+                    f"Evidence may be too old for a time-sensitive question: "
+                    f"{axes['recency'].detail}."
                 )
-            if authority < self.threshold:
+            if (
+                axes["source_authority"].applicable
+                and axes["source_authority"].value < self.threshold
+            ):
                 gaps.append(
                     "Evidence is documentation only — no database rows or computed "
                     "values support the answer."
                 )
 
         report = GradeReport(
-            coverage=round(coverage, 3),
-            specificity=round(specificity, 3),
-            recency=round(recency, 3),
-            source_authority=round(authority, 3),
+            coverage=round(axes["coverage"].value, 3),
+            specificity=round(axes["specificity"].value, 3),
+            recency=round(axes["recency"].value, 3),
+            source_authority=round(axes["source_authority"].value, 3),
             sufficient=not gaps,
             gaps=gaps,
-            reasoning="; ".join(
-                [coverage_detail, specificity_detail, recency_detail, authority_detail]
-            )[:500],
+            reasoning="; ".join(a.detail for a in axes.values())[:500],
             cycle=cycle,
         )
         return GradeResult(
             report=report,
             method="deterministic",
-            axis_detail={
-                "coverage": coverage_detail,
-                "specificity": specificity_detail,
-                "recency": recency_detail,
-                "source_authority": authority_detail,
-            },
+            axis_detail={name: axis.detail for name, axis in axes.items()},
         )
 
     async def run(self, question: str, evidence: list[Evidence], *, cycle: int = 0) -> GradeResult:
@@ -292,36 +399,56 @@ class GraderAgent:
             log.warning("grader.model_failed", error=f"{type(exc).__name__}: {exc}")
             return baseline
 
-        def axis(name: str, fallback: float) -> float:
+        deterministic = self.score_axes(question, evidence)
+
+        def model_axis(name: str, fallback: float) -> float:
             try:
                 return max(0.0, min(1.0, float(payload.get(name, fallback))))
             except (TypeError, ValueError):
                 return fallback
 
-        # Take the lower of model and deterministic on every axis. The
-        # deterministic scores cannot be talked into optimism, and the model
-        # catches semantic gaps keyword overlap misses — so the conservative
-        # combination is stricter than either alone.
-        coverage = min(axis("coverage", baseline.report.coverage), baseline.report.coverage)
-        specificity = min(
-            axis("specificity", baseline.report.specificity), baseline.report.specificity
-        )
-        recency = min(axis("recency", baseline.report.recency), baseline.report.recency)
-        authority = min(
-            axis("source_authority", baseline.report.source_authority),
-            baseline.report.source_authority,
-        )
+        def combine(name: str) -> float:
+            """Take the lower of model and deterministic — but only where the
+            deterministic scorer actually had signal.
+
+            `min()` is the right conservatism when both instruments measure the
+            same thing: the deterministic score cannot be talked into optimism,
+            and the model catches semantic gaps lexical overlap misses. It is
+            the wrong operation when one instrument is measuring nothing. An
+            inapplicable axis abstains and the model's value stands alone;
+            otherwise a scorer with no signal vetoes a sound judgement, which is
+            what sent every Arabic question to the cycle cap.
+            """
+            det = deterministic[name]
+            model_value = model_axis(name, det.value)
+            if not det.applicable:
+                return model_value
+            return min(model_value, det.value)
+
+        scores = {
+            "coverage": combine("coverage"),
+            "specificity": combine("specificity"),
+            "recency": combine("recency"),
+            "source_authority": combine("source_authority"),
+        }
+        coverage = scores["coverage"]
+        specificity = scores["specificity"]
+        recency = scores["recency"]
+        authority = scores["source_authority"]
 
         gaps = [str(g)[:300] for g in (payload.get("gaps") or []) if str(g).strip()]
         gaps = list(dict.fromkeys([*gaps, *baseline.report.gaps]))[:6]
 
-        scores = {
-            "coverage": coverage,
-            "specificity": specificity,
-            "recency": recency,
-            "source_authority": authority,
+        # An axis the deterministic scorer could not measure is excluded from
+        # the sufficiency decision entirely when the model also had nothing
+        # useful to say about it — recency on a question that is not about time
+        # is not a bar to clear.
+        judged = {
+            name: value
+            for name, value in scores.items()
+            if deterministic[name].applicable or name != "recency"
         }
-        sufficient = all(v >= self.threshold for v in scores.values())
+        sufficient = all(v >= self.threshold for v in judged.values())
         if not sufficient and not gaps:
             weakest = min(scores, key=lambda k: scores[k])
             gaps = [

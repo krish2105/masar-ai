@@ -93,20 +93,76 @@ _TRANSACTIONAL = [
     (r"\b(register|renew)\s+(my\s+)?(vehicle|licen[cs]e)", "transaction.registration"),
 ]
 
+# Places that do not move. A question about where one of these is has an answer
+# in the warehouse — latitude and longitude — so it must NOT be treated as a
+# live-vehicle question.
+_STATIC_PLACE = re.compile(
+    r"\b(station|stations|stop|stops|stand|stands|terminal|terminus|"
+    r"gate|gates|depot|centre|center|mall|interchange)\b"
+    r"|محطة|محطات|موقف|مواقف|بوابة",
+    re.IGNORECASE,
+)
+
+_VEHICLE = re.compile(
+    r"\b(bus|buses|metro|tram|taxi|train|abra|ferry|vehicle|service|route)\b"
+    r"|حافلة|باص|مترو|ترام|تاكسي",
+    re.IGNORECASE,
+)
+
+_WHERE_IS = re.compile(r"\b(where\s+is|where'?s|where\s+are|track|locate)\b|أين", re.IGNORECASE)
+
 # Not blocked — answered honestly. This is the honesty rule in code.
+#
+# `vehicle_position` is applied conditionally in `_realtime_rules` rather than
+# listed here: "where is X" only indicates a live query when X is something that
+# moves. Matching it against any transit noun redirected "Where is Union metro
+# station?", telling the user data does not exist when the warehouse holds its
+# coordinates — a confidently wrong refusal, which is worse than the overclaim
+# the rule was written to prevent.
 _REALTIME = [
-    (
-        r"\b(where\s+is|track|live\s+location|current\s+position)\b.*\b(bus|metro|tram|taxi|route)\b",
-        "realtime.vehicle_position",
-    ),
     (r"\b(next|when\s+is\s+the\s+next)\s+(bus|metro|tram|train)\b", "realtime.next_departure"),
     (
-        r"\b(delay|disruption|breakdown|service\s+status)\b.*\b(today|now|currently|right\s+now)\b",
+        r"\b(delay|delays|disruption|breakdown|service\s+status)\b.*\b(today|now|currently|right\s+now)\b",
         "realtime.disruption",
     ),
-    (r"\b(real[\s-]?time|live)\s+(data|feed|position|arrival|tracking)\b", "realtime.generic"),
-    (r"\bhow\s+long\s+(will\s+it\s+take|does\s+it\s+take)\b", "realtime.duration"),
+    (
+        # An optional noun may sit between: "live bus locations", "real-time
+        # metro tracking".
+        r"\b(real[\s-]?time|live)\s+(\w+\s+)?"
+        r"(data|feed|position|positions|location|locations|arrival|arrivals|tracking|map)\b",
+        "realtime.generic",
+    ),
+    (r"\bcurrent\s+(position|location)\b", "realtime.vehicle_position"),
+    # Duration: Masar holds no timetables or speeds, so any figure would be
+    # invented. The previous pattern required "how long will/does it take" with
+    # nothing in between and so missed "how long does the metro take".
+    (r"\bhow\s+long\b[^?]{0,40}\b(take|takes|taking)\b", "realtime.duration"),
+    (r"\b(journey|travel|trip)\s+time\b", "realtime.duration"),
+    (r"\bhow\s+many\s+minutes\b", "realtime.duration"),
+    (r"\bwhat\s+time\s+(does|will)\b.*\b(arrive|depart|leave)\b", "realtime.duration"),
 ]
+
+# Liveness markers that turn an otherwise-static question into a live one.
+_LIVENESS = re.compile(
+    r"\b(right\s+now|now|currently|at\s+the\s+moment|live|real[\s-]?time|today)\b"
+    r"|الآن|حالياً",
+    re.IGNORECASE,
+)
+
+
+def _realtime_rules(text: str) -> list[str]:
+    """Real-time matches, including the conditional vehicle-position rule."""
+    matched = _match(text, _REALTIME)
+
+    # "Where is …" is a live question only when the subject moves. A static
+    # place in the sentence means the user is asking for a location the
+    # warehouse can supply.
+    if _WHERE_IS.search(text) and _VEHICLE.search(text):
+        if not _STATIC_PLACE.search(text) or _LIVENESS.search(text):
+            matched.append("realtime.vehicle_position")
+
+    return list(dict.fromkeys(matched))
+
 
 _OUT_OF_SCOPE = [
     (r"\b(weather|forecast|temperature)\b", "scope.weather"),
@@ -219,7 +275,7 @@ class GuardrailAgent:
                 )
 
         # Real-time is answered, not blocked — the honesty rule.
-        if matched := _match(sanitized, _REALTIME):
+        if matched := _realtime_rules(sanitized):
             en, ar = REDIRECTS["realtime"]
             log.info("guardrail.realtime_redirect", rules=matched)
             return GuardrailResult(
