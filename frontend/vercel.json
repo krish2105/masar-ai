@@ -3,7 +3,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "//": "NEXT_PUBLIC_API_BASE is set in the Vercel project settings (or left unset — the client defaults to http://localhost:8000). It is NOT wired to a Vercel secret here, so a deploy never fails on a missing secret. Point it at a hosted backend once one exists; see docs/DEPLOYMENT.md.",
   "headers": [
     {
       "source": "/(.*)",
