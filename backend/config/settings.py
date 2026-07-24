@@ -60,6 +60,15 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
 
+    # ---- graph (GraphRAG, optional) ----------------------------------------
+    # Absent Neo4j is a named degradation, not a fault: the graph tool simply
+    # becomes unavailable and reachability questions fall back to a named gap.
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "masar_graph_dev_password"
+    neo4j_database: str | None = None
+    graph_enabled: bool = True
+
     # ---- tracing (optional) ------------------------------------------------
     langsmith_api_key: str | None = None
     langsmith_project: str = "masar-ai"

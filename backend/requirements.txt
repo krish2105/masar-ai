@@ -19,6 +19,7 @@ litellm>=1.59.0
 psycopg[binary,pool]>=3.2.3
 pgvector>=0.3.6
 redis>=5.2.1
+neo4j>=5.27.0  # GraphRAG: route↔stop reachability graph
 
 # ---- Data engineering ------------------------------------------------------
 polars>=1.17.0
