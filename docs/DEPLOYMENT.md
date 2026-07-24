@@ -1,5 +1,44 @@
 # Deployment
 
+## Live deployment status
+
+| Component | Status | URL |
+|---|---|---|
+| **Source** | ✅ public | https://github.com/krish2105/masar-ai |
+| **Front-end (UI)** | ✅ live on Vercel | https://masar-ai-xi.vercel.app |
+| **Back-end** | ⚠️ local only — see below | — |
+
+**What the live Vercel link shows:** the front-end UI — the landing page, the
+Desert Ink design, the layout, the theme toggle. It renders fully and publicly.
+
+**What it does _not_ do:** answer questions. The chat, `/explore` analytics and
+the map all call the back-end API, and the back-end is not on a public host. Why
+not:
+
+1. It loads **~3.2 GB of local models** (`bge-m3` embeddings + `bge-reranker-v2-m3`)
+   into memory. Free tiers (Vercel functions, Railway/Render 512 MB) cannot hold
+   them — the process would OOM on the first retrieval.
+2. With **no cloud LLM key**, generation falls back to local Ollama, which is not
+   reachable from a cloud host. So even on paid hosting, chat needs either a free
+   Groq/Gemini key or a self-hosted model.
+
+A genuinely-live end-to-end demo therefore needs a host with ≥ 4 GB RAM **and** a
+free LLM key. Both are one configuration step for the owner; neither is free.
+`render.yaml` + `backend/Dockerfile` make the back-end deploy a single dashboard
+action once those are in place — then set `NEXT_PUBLIC_API_BASE` in the Vercel
+project to the back-end URL and the live site becomes fully functional.
+
+**To see the whole system working now:** run it locally (one command, below). The
+landing page on Vercel is the honest public artifact; the GitHub repo is the
+runnable one.
+
+> **Note for the owner:** the first Vercel deploy auto-linked to a *pre-existing*
+> project named `frontend` (folder-name match) and promoted a production
+> deployment there before I moved Masar to its own dedicated `masar-ai` project.
+> If that `frontend` project served something else, re-promote its previous
+> production deployment from the Vercel dashboard (the older deployments are still
+> intact). Masar now lives only in the `masar-ai` project.
+
 ## Local
 
 ```bash

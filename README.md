@@ -13,6 +13,13 @@
 ![Postgres](https://img.shields.io/badge/Postgres%2016-pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Cost](https://img.shields.io/badge/inference%20cost-AED%200-2ABFB2)
 
+**[Live UI →](https://masar-ai-xi.vercel.app)**  ·  **[Source →](https://github.com/krish2105/masar-ai)**
+
+<sub>The live link is the front-end UI (landing, design, layout). The chat, analytics
+and map need the backend running — it loads ~3.2 GB of local embedding/reranker
+models, so it runs locally (`make dev`) rather than on a free host. One-command
+local run below.</sub>
+
 </div>
 
 ---
