@@ -13,12 +13,14 @@
 ![Postgres](https://img.shields.io/badge/Postgres%2016-pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Cost](https://img.shields.io/badge/inference%20cost-AED%200-2ABFB2)
 
-**[Live UI →](https://masar-ai-xi.vercel.app)**  ·  **[Source →](https://github.com/krish2105/masar-ai)**
+**[Live demo →](https://masar-ai-xi.vercel.app)**  ·  **[Source →](https://github.com/krish2105/masar-ai)**
 
-<sub>The live link is the front-end UI (landing, design, layout). The chat, analytics
-and map need the backend running — it loads ~3.2 GB of local embedding/reranker
-models, so it runs locally (`make dev`) rather than on a free host. One-command
-local run below.</sub>
+<sub>**Fully live at AED 0.** The chat (14-agent corrective loop with citations),
+analytics, map and route-reachability graph all run against a real backend on an
+Oracle always-free ARM VM (Docker + Caddy auto-HTTPS), with free Groq/Gemini keys.
+The first answer after an idle spell warms the local embedding/reranker models
+(~3.2 GB); after that, cloud LLMs answer in seconds. A one-command local run is
+also below.</sub>
 
 </div>
 
