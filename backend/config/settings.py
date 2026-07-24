@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     max_replan_cycles: int = Field(default=3, ge=1, le=5)
     grader_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 
+    # ---- edge rate limiting (per client IP, §4.3) -------------------------
+    # The chat endpoints run the full agent graph — several LLM calls each —
+    # against a shared free budget. These cap how much any single client IP can
+    # spend before the router's own provider buckets even come into play, so one
+    # hammering client cannot exhaust the day for everyone. Enforced by the same
+    # fail-open Redis limiter the router uses (Redis down => unenforced, never a
+    # hard failure). Set either window to 0 to disable it.
+    chat_rate_limit_rpm: int = Field(default=12, ge=0)
+    chat_rate_limit_rpd: int = Field(default=400, ge=0)
+
     # ---- Dubai Pulse legacy gateway (optional) ----------------------------
     dubai_pulse_api_key: str | None = None
     dubai_pulse_api_secret: str | None = None

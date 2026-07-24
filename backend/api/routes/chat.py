@@ -23,17 +23,26 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from backend.agents.a14_observability import agent_label
+from backend.api.rate_limit import enforce_chat_rate_limit
 from backend.graph.builder import MasarGraph, build_agents
 from backend.services.llm_router import get_router
 from backend.services.logging import get_logger
 
 log = get_logger(__name__)
-router = APIRouter(prefix="/api/v1", tags=["chat"])
+
+# The per-IP edge cap guards both chat shapes (see backend/api/rate_limit.py).
+# It sits on the router, so it runs before either handler and never touches the
+# SSE stream. health and trace are separate routers and stay uncapped.
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["chat"],
+    dependencies=[Depends(enforce_chat_rate_limit)],
+)
 
 _graph: MasarGraph | None = None
 _graph_lock = asyncio.Lock()

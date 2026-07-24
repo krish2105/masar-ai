@@ -77,7 +77,14 @@ class RateLimiter:
         if self._client is None:
             try:
                 self._client = aioredis.from_url(
-                    self.redis_url, socket_connect_timeout=2, decode_responses=True
+                    self.redis_url,
+                    socket_connect_timeout=2,
+                    # Bound per-command reads too. Without this a Redis that
+                    # accepts the connection but stops answering (fsync stall,
+                    # paused free-tier instance) would hang mget/execute forever
+                    # — turning "fail open on a Redis blip" into a chat outage.
+                    socket_timeout=2,
+                    decode_responses=True,
                 )
                 await self._client.ping()
             except Exception as exc:
@@ -109,12 +116,15 @@ class RateLimiter:
         minute_key, day_key = self._keys(provider)
         try:
             minute_count, day_count = await client.mget(minute_key, day_key)
+            # Coerce inside the try: a timed-out read OR a corrupt/non-numeric
+            # counter both fail open here, rather than a ValueError escaping as a
+            # 500 on whatever request happens to be holding the limiter.
+            minute_used = int(minute_count or 0)
+            day_used = int(day_count or 0)
         except Exception as exc:
             log.warning("rate_limiter.read_failed", error=str(exc)[:100])
             return BucketState(provider=provider, allowed=True, reason="limiter error")
 
-        minute_used = int(minute_count or 0)
-        day_used = int(day_count or 0)
         usage = {"rpm_used": minute_used, "rpd_used": day_used}
 
         if limits.rpm is not None and minute_used >= limits.rpm:
