@@ -4,7 +4,7 @@ title: Marine network overview
 lang: en
 service_category: network_reference
 source_url: https://www.dubaipulse.gov.ae/
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - dim_route
 - dim_station
@@ -26,8 +26,8 @@ mode: Marine
 ## Routes with the most stops
 
 - **CR5** — Deira Old Souq Marine Transport Station to Al Fahidi Marine Transport Station (11 stops)
-- **CR6** — Baniyas Marine Transport Station 1 to Al Seef Marine Transport Station 1 (10 stops)
 - **BM3** — Bluewaters Marine Transport Station to Marina Mall Marine Transport Station 1 (10 stops)
+- **CR6** — Baniyas Marine Transport Station 1 to Al Seef Marine Transport Station 1 (10 stops)
 - **CR4** — Al Fahidi Marine Transport Station to Al Sabkha Marine Transport Station (8 stops)
 - **UPCR6** — Baniyas Marine Transport Station 1 to Al Seef Marine Transport Station 1 (6 stops)
 

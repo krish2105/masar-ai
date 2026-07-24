@@ -4,7 +4,7 @@ title: 'Dataset: tram_stations'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-rail/rta_tram_stations-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for tram_stations
 - data quality report

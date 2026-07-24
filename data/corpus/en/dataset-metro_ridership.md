@@ -4,7 +4,7 @@ title: 'Dataset: metro_ridership'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-rail/rta_metro_ridership-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for metro_ridership
 - data quality report
@@ -57,9 +57,9 @@ Analysis over this dataset is therefore a **sample**, not the full published his
 |---|---|---|---|---|
 | `txn_type` | String | 0.0% | 2 | Check out |
 | `txn_date` | Datetime(time_unit='us', time_zone=None) | 0.0% | 2 | 2025-03-08 00:00:00 |
-| `txn_time` | String | 0.0% | 68,246 | 22:56:38 |
-| `start_location` | String | 55.3% | 54 | Sharaf DG Metro Station |
-| `end_location` | String | 0.0% | 53 | Abu Baker Al Siddique Metro Station |
-| `line_name` | String | 0.0% | 2 | Green Metro Line |
+| `txn_time` | String | 0.0% | 68,246 | 17:36:04 |
+| `start_location` | String | 55.3% | 54 | ADCB Metro Station |
+| `end_location` | String | 0.0% | 53 | Union  Metro Station |
+| `line_name` | String | 0.0% | 2 | Red Metro Line |
 | `start_zone` | String | 0.0% | 6 | Zone 5 |
 | `end_zone` | String | 0.0% | 6 | Zone 5 |

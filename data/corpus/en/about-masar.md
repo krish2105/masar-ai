@@ -4,7 +4,7 @@ title: What Masar AI is
 lang: en
 service_category: capability
 source_url: https://github.com/krish2105
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - system design
 - docs/DECISIONS.md

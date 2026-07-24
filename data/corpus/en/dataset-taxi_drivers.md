@@ -4,7 +4,7 @@ title: 'Dataset: taxi_drivers'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/roads-and-cars/rta_dubai_taxi_drivers-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for taxi_drivers
 - data quality report
@@ -47,7 +47,7 @@ domain: taxi
 
 | column | type | null rate | distinct | example |
 |---|---|---|---|---|
-| `report_date` | Datetime(time_unit='us', time_zone=None) | 0.0% | 21 | 2022-01-31 00:00:00 |
+| `report_date` | Datetime(time_unit='us', time_zone=None) | 0.0% | 21 | 2021-02-28 00:00:00 |
 | `operator_type` | String | 0.0% | 2 | Franchisee |
-| `operator_name` | String | 0.0% | 8 | Cars Taxi |
-| `drivers_num` | Float64 | 0.0% | 114 | 3040.0 |
+| `operator_name` | String | 0.0% | 8 | Arabia Taxi |
+| `drivers_num` | Float64 | 0.0% | 114 | 1924.0 |

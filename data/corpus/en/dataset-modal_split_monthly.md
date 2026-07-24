@@ -4,7 +4,7 @@ title: 'Dataset: modal_split_monthly'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-public-transport/rta_public_transport_trips_by_type_of_transport_month-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for modal_split_monthly
 - data quality report

@@ -4,7 +4,7 @@ title: أجرة بطاقة نول
 lang: ar
 service_category: fare_reference
 source_url: https://www.rta.ae/wps/portal/rta/ae/public-transport/nol-cards
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - config/fares.yaml
 generated: true

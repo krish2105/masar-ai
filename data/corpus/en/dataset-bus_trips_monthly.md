@@ -4,7 +4,7 @@ title: 'Dataset: bus_trips_monthly'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-bus/rta_bus_passengers_trips_by_route_monthly-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for bus_trips_monthly
 - data quality report

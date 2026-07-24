@@ -4,7 +4,7 @@ title: 'Dataset: marine_stations'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-marine/rta_marine_stations_gis-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for marine_stations
 - data quality report
@@ -43,10 +43,10 @@ domain: marine
 
 | column | type | null rate | distinct | example |
 |---|---|---|---|---|
-| `station_id` | String | 0.0% | 59 | 259 |
-| `station_name` | String | 0.0% | 57 | Baniyas Marine Transport Station |
-| `route_name` | String | 49.1% | 19 | Water Bus |
-| `longitude` | Float64 | 0.0% | 28 | 55.311656 |
-| `latitude` | Float64 | 0.0% | 28 | 25.262572 |
-| `valida_from` | String | 0.0% | 2 | 04/24/2020 00:00:00 |
-| `valida_until` | String | 0.0% | 2 | 01/01/2036 00:00:00 |
+| `station_id` | String | 0.0% | 59 | 27501 |
+| `station_name` | String | 0.0% | 57 | Jumeirah Beach Park |
+| `route_name` | String | 49.1% | 19 | CR1 |
+| `longitude` | Float64 | 0.0% | 28 | 55.29 |
+| `latitude` | Float64 | 0.0% | 28 | 25.19 |
+| `valida_from` | String | 0.0% | 2 | 2020-01-01 |
+| `valida_until` | String | 0.0% | 2 | 2025-01-01 |

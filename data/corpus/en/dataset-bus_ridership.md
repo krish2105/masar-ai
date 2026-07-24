@@ -4,7 +4,7 @@ title: 'Dataset: bus_ridership'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-bus/rta_bus_ridership-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for bus_ridership
 - data quality report
@@ -57,9 +57,9 @@ Analysis over this dataset is therefore a **sample**, not the full published his
 |---|---|---|---|---|
 | `txn_type` | String | 0.0% | 2 | CKO |
 | `txn_date` | Datetime(time_unit='us', time_zone=None) | 0.0% | 2 | 2025-04-04 00:00:00 |
-| `txn_time` | String | 0.0% | 79,490 | 11:50:39 |
-| `start_location` | String | 0.0% | 2,519 | Reef Mall 2 |
-| `end_location` | String | 0.0% | 2,519 | Reef Mall 2 |
-| `route_name` | String | 14.2% | 143 | 43 |
-| `start_zone` | String | 0.0% | 8 | Zone 5 |
-| `end_zone` | String | 0.0% | 8 | Zone 5 |
+| `txn_time` | String | 0.0% | 79,490 | 10:57:09 |
+| `start_location` | String | 0.0% | 2,519 | Hudheiba, Turnoff 1 |
+| `end_location` | String | 0.0% | 2,519 | Hudheiba, Turnoff 1 |
+| `route_name` | String | 14.2% | 143 | F21 |
+| `start_zone` | String | 0.0% | 8 | Zone 6 |
+| `end_zone` | String | 0.0% | 8 | Zone 6 |

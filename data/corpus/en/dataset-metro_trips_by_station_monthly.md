@@ -4,7 +4,7 @@ title: 'Dataset: metro_trips_by_station_monthly'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-rail/rta_metro_ridership-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for metro_trips_by_station_monthly
 - data quality report

@@ -4,7 +4,7 @@ title: 'Dataset: transport_stations'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-public-transport/rta_public_transportation_stations-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for transport_stations
 - data quality report
@@ -48,35 +48,35 @@ domain: multimodal
 | column | type | null rate | distinct | example |
 |---|---|---|---|---|
 | `transport_mode` | String | 0.0% | 4 | Marine |
-| `station_name_en` | String | 0.0% | 136 | Safa Park Marine Transport Station |
-| `station_name_ar` | String | 0.7% | 136 | محطة حديقة الصفا للنقل البحري |
-| `station_number` | String | 0.0% | 137 | 29701 |
-| `station_location_type_en` | String | 51.8% | 4 | Elevated |
-| `station_location_type_ar` | String | 51.8% | 4 | فوق الأرض |
+| `station_name_en` | String | 0.0% | 136 | Jebel Ali Golf Club Marine Transport Sta |
+| `station_name_ar` | String | 0.7% | 136 | محطة فندق ومنتجع جبل علي للنقل البحري |
+| `station_number` | String | 0.0% | 137 | 27901 |
+| `station_location_type_en` | String | 51.8% | 4 | Underground |
+| `station_location_type_ar` | String | 51.8% | 4 | تحت الأرض |
 | `current_service_status` | String | 35.8% | 5 | NO |
 | `number_stops` | Float64 | 36.5% | 10 | 1.0 |
-| `number_layby` | Float64 | 84.7% | 10 | 8.0 |
+| `number_layby` | Float64 | 84.7% | 10 | 3.0 |
 | `customer_facilities` | String | 50.4% | 4 | WIFI, Restrooms, Waiting Area, Air-condi |
 | `parking_facilities` | String | 63.5% | 3 | NO |
-| `zone_id` | String | 0.0% | 7 | 6 |
-| `line_name` | String | 21.2% | 42 | Red |
-| `longitude` | Float64 | 0.0% | 134 | 55.24928 |
-| `latitude` | Float64 | 0.0% | 134 | 25.18569 |
-| `station_opening_date` | Datetime(time_unit='us', time_zone=None) | 56.2% | 12 | 2010-05-15 00:00:00 |
+| `zone_id` | String | 0.0% | 7 | 2 |
+| `line_name` | String | 21.2% | 42 | Green |
+| `longitude` | Float64 | 0.0% | 134 | 55.02358 |
+| `latitude` | Float64 | 0.0% | 134 | 24.98897 |
+| `station_opening_date` | Datetime(time_unit='us', time_zone=None) | 56.2% | 12 | 2011-09-09 00:00:00 |
 | `station_closing_date` | String | 100.0% | 1 |  |
-| `station_starttime_saturday` | String | 25.6% | 13 | 05:00 AM |
+| `station_starttime_saturday` | String | 25.6% | 13 | 05:30 AM |
 | `station_endtime_saturday` | String | 25.6% | 11 | 12:00 AM |
-| `station_starttime_sunday` | String | 25.6% | 11 | 05:00 AM |
+| `station_starttime_sunday` | String | 25.6% | 11 | 05:30 AM |
 | `station_endtime_sunday` | String | 25.6% | 10 | 12:00 AM |
-| `station_starttime_monday` | String | 25.6% | 11 | 05:00 AM |
+| `station_starttime_monday` | String | 25.6% | 11 | 05:30 AM |
 | `station_endtime_monday` | String | 25.6% | 10 | 12:00 AM |
-| `station_starttime_tuesday` | String | 25.6% | 11 | 05:00 AM |
+| `station_starttime_tuesday` | String | 25.6% | 11 | 05:30 AM |
 | `station_endtime_tuesday` | String | 25.6% | 10 | 12:00 AM |
-| `station_starttime_wednesday` | String | 25.6% | 11 | 05:00 AM |
+| `station_starttime_wednesday` | String | 25.6% | 11 | 05:30 AM |
 | `station_endtime_wednesday` | String | 25.6% | 10 | 12:00 AM |
-| `station_starttime_thursday` | String | 25.6% | 11 | 05:00 AM |
+| `station_starttime_thursday` | String | 25.6% | 11 | 05:30 AM |
 | `station_endtime_thursday` | String | 25.6% | 9 | 01:00 AM |
-| `station_starttime_friday` | String | 25.6% | 9 | 05:00 AM |
+| `station_starttime_friday` | String | 25.6% | 9 | 10:00 AM |
 | `station_endtime_friday` | String | 25.6% | 8 | 01:00 AM |
-| `station_name_ar_norm` | String | 0.7% | 136 | محطه حديقه الصفا للنقل البحري |
-| `station_location_type_ar_norm` | String | 51.8% | 4 | فوق الارض |
+| `station_name_ar_norm` | String | 0.7% | 136 | محطه فندق ومنتجع جبل علي للنقل البحري |
+| `station_location_type_ar_norm` | String | 51.8% | 4 | تحت الارض |

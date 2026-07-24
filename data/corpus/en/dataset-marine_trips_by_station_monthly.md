@@ -4,7 +4,7 @@ title: 'Dataset: marine_trips_by_station_monthly'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-marine/rta_marine_ridership-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for marine_trips_by_station_monthly
 - data quality report
@@ -44,7 +44,7 @@ domain: marine
 | column | type | null rate | distinct | example |
 |---|---|---|---|---|
 | `year` | String | 0.0% | 4 | 2021 |
-| `month` | String | 0.0% | 10 | 3 |
-| `marine_mode` | String | 75.4% | 6 | Private_Abra |
-| `marine_station` | String | 0.0% | 107 | Waterfront Market Marine Transport Stati |
+| `month` | String | 0.0% | 10 | 6 |
+| `marine_mode` | String | 75.4% | 6 | Dubai_Ferry |
+| `marine_station` | String | 0.0% | 107 | Bur Dubai Marine Transport Station |
 | `passengers_rids` | String | 5.1% | 333 | 0 |

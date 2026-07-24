@@ -4,7 +4,7 @@ title: 'Dataset: salik_tariff'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-archive/rta_salik_tariff-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for salik_tariff
 - data quality report

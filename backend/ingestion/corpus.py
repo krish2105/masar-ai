@@ -654,6 +654,252 @@ class CorpusBuilder:
         log.info("corpus.capability_docs", documents=len(docs) + 1)
         return len(docs) + 1
 
+    # ----------------------------------------------------- service pointers --
+    def build_service_docs(self) -> int:
+        """Service-procedure pointers for SERVICE_INFO questions.
+
+        THE HONESTY CONSTRAINT THAT SHAPES THESE
+        -----------------------------------------
+        Masar's corpus is generated from data it holds, precisely so it does not
+        invent verifiable-looking government facts. A service document that
+        stated "replacing a lost nol card costs AED 20, bring your Emirates ID"
+        would fabricate specifics presented as authoritative — the exact failure
+        GOVERNANCE.md forbids.
+
+        So each document below describes a service at a **publicly-known, general
+        level**, names the **authoritative channel** (rta.ae, the RTA app,
+        salik.ae, or Dubai Police for fines), and states **explicitly what Masar
+        does not hold** — current fees, exact document lists, opening hours. That
+        turns a SERVICE_INFO question from "retrieved nothing → cycle cap → low
+        confidence" into a genuinely useful answer: the general process, where to
+        do it authoritatively, and an honest limitation. It answers the user's
+        real need (what do I do and where) without asserting a specific figure it
+        cannot verify.
+
+        One document deliberately corrects a scope error: traffic fines are a
+        **Dubai Police** matter, not RTA. Saying so is more useful and more
+        honest than pretending RTA handles them.
+        """
+        rta = "https://www.rta.ae"
+        salik = "https://www.salik.gov.ae"
+        police = "https://www.dubaipolice.gov.ae"
+
+        limitation_en = (
+            "\n\n## What Masar does not hold\n\n"
+            "Masar does not hold the current fee, the exact list of required documents, "
+            "processing times or opening hours for this service — these change and are "
+            "not in any dataset Masar carries. Confirm the current, authoritative details "
+            "at the source linked above before acting. Masar is an independent academic "
+            "project and is not affiliated with RTA."
+        )
+        limitation_ar = (
+            "\n\n## ما لا يوفره مسار\n\n"
+            "لا يحتفظ مسار بالرسوم الحالية أو قائمة المستندات الدقيقة أو أوقات العمل لهذه "
+            "الخدمة، فهذه تتغير وليست ضمن بيانات مسار. يُرجى تأكيد التفاصيل الرسمية الحالية "
+            "من المصدر المذكور أعلاه قبل اتخاذ أي إجراء. مسار مشروع أكاديمي مستقل وغير تابع "
+            "لهيئة الطرق والمواصلات."
+        )
+
+        # (slug, title, source_url, body-without-limitation)
+        en_docs = [
+            (
+                "service-nol-replacement",
+                "Replacing a lost or damaged nol card",
+                f"{rta}/wps/portal/rta/ae/public-transport/nol-cards",
+                "# Replacing a lost nol card\n\n"
+                "A lost or damaged nol card can be replaced through RTA's own channels: the "
+                "RTA app, ticket offices and customer happy centres at metro stations and bus "
+                "stations, and the RTA website.\n\n"
+                "Whether the balance on a lost card can be recovered depends on the card "
+                "type. **Personalised (Blue) nol cards** are registered to you and offer more "
+                "protection — a lost card can generally be blocked and a replacement issued. "
+                "**Anonymous cards (Silver, Gold, Red)** are not registered, so a lost card's "
+                "stored value is harder to recover. This is the main reason to register a "
+                "personalised card if you travel often.\n\n"
+                "The practical step: report the loss and request a replacement through the "
+                "RTA app or at a customer service centre.",
+            ),
+            (
+                "service-licence-renewal",
+                "Renewing a Dubai driving licence",
+                f"{rta}/wps/portal/rta/ae/home/rta-services",
+                "# Renewing a Dubai driving licence\n\n"
+                "Renewing a Dubai driving licence is an RTA service, commonly completed "
+                "through the RTA app, the RTA website, or a licensing / customer service "
+                "centre.\n\n"
+                "Renewal generally involves your **existing driving licence** and **Emirates "
+                "ID**, and for many drivers an **eye test** from an approved optician (some "
+                "channels offer the eye test as part of the flow). Requirements can differ by "
+                "nationality, age and licence status.\n\n"
+                "The practical step: start the renewal in the RTA app, which will list the "
+                "exact documents and any eye-test requirement for your specific case.",
+            ),
+            (
+                "service-fine-dispute",
+                "Disputing a traffic fine in Dubai (Dubai Police, not RTA)",
+                f"{police}/en/services",
+                "# Disputing a traffic fine\n\n"
+                "**Traffic fines in Dubai are handled by Dubai Police, not RTA.** RTA "
+                "operates public transport and the Salik toll; traffic fines and their "
+                "disputes fall under Dubai Police, and some categories involve the Public "
+                "Prosecution. This distinction matters — going to RTA for a traffic-fine "
+                "dispute is the wrong channel.\n\n"
+                "A fine dispute (often called a **grievance** or **objection**) is typically "
+                "filed through the Dubai Police app or website, usually within a limited "
+                "period after the fine is issued. You generally need the fine number and "
+                "supporting evidence for your objection.\n\n"
+                "The practical step: file the grievance through the Dubai Police app or "
+                "dubaipolice.gov.ae. Masar covers RTA transport data and cannot process or "
+                "track a fine.",
+            ),
+            (
+                "service-salik-account",
+                "Registering for a Salik account",
+                f"{salik}",
+                "# Registering for a Salik account\n\n"
+                "Salik is Dubai's automated road-toll system, operated by Salik Company. "
+                "There are no toll booths — a **Salik tag** on the vehicle windscreen is read "
+                "as the vehicle passes a gate, and the toll is deducted from the account "
+                "balance.\n\n"
+                "A new account and tag are registered through the **Salik app** or "
+                "**salik.gov.ae**. You typically need your vehicle registration (Mulkiya) and "
+                "an Emirates ID, and you top the account up in advance.\n\n"
+                "Masar holds the **historical Salik toll tariff** (see the Salik fare "
+                "reference) and can estimate toll cost for a given number of gate crossings — "
+                "but it does not perform account registration. Register through the Salik app "
+                "or salik.gov.ae.",
+            ),
+            (
+                "service-new-resident",
+                "New resident: setting up daily commuting in Dubai",
+                f"{rta}/wps/portal/rta/ae/public-transport",
+                "# Setting up to commute as a new resident\n\n"
+                "For daily commuting in Dubai, a new resident typically needs:\n\n"
+                "1. **A nol card** — the single card for metro, bus, tram and marine "
+                "transport. A personalised (Blue) card is worth registering if you commute "
+                "daily, because it protects your balance and supports concessions.\n"
+                "2. **An understanding of fare zones** — nol fares depend on how many zones a "
+                "journey crosses, not distance. If your commute is regular, a monthly pass "
+                "may be cheaper than paying per trip.\n"
+                "3. **A Salik tag** — only if you drive through toll gates. Registered via the "
+                "Salik app.\n\n"
+                "What Masar can do for you here: it can compute the cost of a nol commute for "
+                "a given zone count and number of working days, and compare driving "
+                "(including Salik and fuel) against public transport — with every assumption "
+                "shown. Ask it, for example, 'monthly cost of a 2-zone nol commute for 22 "
+                "working days'. For the account and registration steps, use the RTA and Salik "
+                "apps.",
+            ),
+        ]
+
+        ar_docs = [
+            (
+                "service-nol-replacement-ar",
+                "استبدال بطاقة نول المفقودة",
+                f"{rta}/wps/portal/rta/ae/public-transport/nol-cards",
+                "# استبدال بطاقة نول المفقودة\n\n"
+                "يمكن استبدال بطاقة نول المفقودة أو التالفة عبر قنوات الهيئة: تطبيق RTA، "
+                "ومكاتب التذاكر ومراكز خدمة المتعاملين في محطات المترو والحافلات، وموقع "
+                "الهيئة.\n\n"
+                "تعتمد إمكانية استرداد الرصيد على نوع البطاقة. **بطاقة نول الشخصية (الزرقاء)** "
+                "مسجّلة باسمك وتوفّر حماية أكبر — إذ يمكن إيقافها وإصدار بديل. أما **البطاقات "
+                "غير المسجّلة (الفضية والذهبية والحمراء)** فيصعب استرداد رصيدها عند فقدانها. "
+                "لذلك يُنصح بتسجيل بطاقة شخصية إن كنت تسافر كثيراً.\n\n"
+                "الخطوة العملية: أبلغ عن الفقدان واطلب البديل عبر تطبيق RTA أو أحد مراكز خدمة "
+                "المتعاملين.",
+            ),
+            (
+                "service-licence-renewal-ar",
+                "تجديد رخصة القيادة في دبي",
+                f"{rta}/wps/portal/rta/ae/home/rta-services",
+                "# تجديد رخصة القيادة\n\n"
+                "تجديد رخصة القيادة في دبي خدمة تقدّمها الهيئة، وتُنجز عادةً عبر تطبيق RTA أو "
+                "موقع الهيئة أو أحد مراكز الترخيص وخدمة المتعاملين.\n\n"
+                "يتطلب التجديد عادةً **رخصة القيادة الحالية** و**بطاقة الهوية الإماراتية**، "
+                "وبالنسبة لكثير من السائقين **فحص النظر** من أخصائي معتمد. وقد تختلف المتطلبات "
+                "حسب الجنسية والعمر وحالة الرخصة.\n\n"
+                "الخطوة العملية: ابدأ التجديد من تطبيق RTA الذي يعرض المستندات المطلوبة لحالتك "
+                "بدقة.",
+            ),
+            (
+                "service-fine-dispute-ar",
+                "الاعتراض على مخالفة مرورية (شرطة دبي وليس الهيئة)",
+                f"{police}/ar/services",
+                "# الاعتراض على مخالفة مرورية\n\n"
+                "**المخالفات المرورية في دبي تختص بها شرطة دبي وليس هيئة الطرق والمواصلات.** "
+                "تُشغّل الهيئة النقل العام ورسوم سالك، أما المخالفات المرورية والاعتراض عليها "
+                "فتتبع شرطة دبي، وبعض الحالات تتبع النيابة العامة. التوجّه إلى الهيئة "
+                "للاعتراض على مخالفة مرورية قناة خاطئة.\n\n"
+                "يُقدَّم الاعتراض (التظلّم) عادةً عبر تطبيق شرطة دبي أو موقعها، وغالباً خلال "
+                "مدة محددة من تاريخ المخالفة، وتحتاج إلى رقم المخالفة وأدلة داعمة.\n\n"
+                "الخطوة العملية: قدّم التظلّم عبر تطبيق شرطة دبي أو الموقع الرسمي. يغطي مسار "
+                "بيانات النقل ولا يمكنه معالجة المخالفات أو متابعتها.",
+            ),
+            (
+                "service-salik-account-ar",
+                "فتح حساب سالك جديد",
+                f"{salik}",
+                "# فتح حساب سالك جديد\n\n"
+                "سالك هو نظام التعرفة المرورية الآلي في دبي. لا توجد بوابات دفع يدوية — بل "
+                "تُقرأ **بطاقة سالك** الملصقة على زجاج المركبة عند المرور من البوابة وتُخصم "
+                "الرسوم من رصيد الحساب.\n\n"
+                "يُفتح الحساب وتُطلب البطاقة عبر **تطبيق سالك** أو **salik.gov.ae**. تحتاج "
+                "عادةً إلى ملكية المركبة وبطاقة الهوية، وتشحن الحساب مسبقاً.\n\n"
+                "يحتفظ مسار **بتعرفة سالك التاريخية** ويمكنه تقدير تكلفة عدد من عمليات العبور، "
+                "لكنه لا يفتح الحسابات. سجّل عبر تطبيق سالك أو الموقع الرسمي.",
+            ),
+            (
+                "service-new-resident-ar",
+                "مقيم جديد: الاستعداد للتنقل اليومي في دبي",
+                f"{rta}/wps/portal/rta/ae/public-transport",
+                "# الاستعداد للتنقل كمقيم جديد\n\n"
+                "للتنقل اليومي في دبي يحتاج المقيم الجديد عادةً إلى:\n\n"
+                "1. **بطاقة نول** — البطاقة الموحّدة للمترو والحافلات والترام والنقل البحري. "
+                "يُنصح بتسجيل بطاقة شخصية (زرقاء) للمتنقلين يومياً.\n"
+                "2. **فهم مناطق الأجرة** — تعتمد أجرة نول على عدد المناطق التي تعبرها الرحلة "
+                "وليس المسافة. وقد يكون الاشتراك الشهري أوفر عند التنقل المنتظم.\n"
+                "3. **بطاقة سالك** — فقط إذا كنت تقود عبر بوابات الرسوم، وتُسجّل عبر تطبيق "
+                "سالك.\n\n"
+                "ما يقدّمه مسار: يمكنه حساب تكلفة اشتراك نول لعدد مناطق وأيام عمل محددة، "
+                "ومقارنة القيادة (شاملة سالك والوقود) بالنقل العام مع بيان كل الافتراضات. "
+                "لخطوات التسجيل استخدم تطبيقات الهيئة وسالك.",
+            ),
+        ]
+
+        for slug, title, url, body in en_docs:
+            content = (
+                _front_matter(
+                    doc_id=slug,
+                    title=title,
+                    lang="en",
+                    category="service_info",
+                    source_url=url,
+                    grounded_in=["publicly documented RTA/Dubai service channels"],
+                )
+                + body
+                + limitation_en
+            )
+            self._write("en", slug, content)
+
+        for slug, title, url, body in ar_docs:
+            content = (
+                _front_matter(
+                    doc_id=slug,
+                    title=title,
+                    lang="ar",
+                    category="service_info",
+                    source_url=url,
+                    grounded_in=["publicly documented RTA/Dubai service channels"],
+                )
+                + body
+                + limitation_ar
+            )
+            self._write("ar", slug, content)
+
+        total = len(en_docs) + len(ar_docs)
+        log.info("corpus.service_docs", documents=total)
+        return total
+
     # ------------------------------------------------------------------- run --
     def build_all(self) -> dict[str, int]:
         counts = {
@@ -662,6 +908,7 @@ class CorpusBuilder:
             "zone_guides": self.build_zone_guides(),
             "mode_overviews": self.build_mode_overviews(),
             "fare_reference": self.build_fare_reference(),
+            "service_docs": self.build_service_docs(),
             "capability_docs": self.build_capability_docs(),
         }
         counts["total"] = sum(counts.values())

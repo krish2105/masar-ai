@@ -4,7 +4,7 @@ title: Salik road toll
 lang: en
 service_category: fare_reference
 source_url: https://www.dubaipulse.gov.ae/data/rta-archive/rta_salik_tariff-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - dim_salik_tariff (gold layer)
 - config/fares.yaml

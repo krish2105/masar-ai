@@ -4,7 +4,7 @@ title: Metro network overview
 lang: en
 service_category: network_reference
 source_url: https://www.dubaipulse.gov.ae/
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - dim_route
 - dim_station

@@ -4,7 +4,7 @@ title: 'Dataset: taxi_stands'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/roads-and-cars/rta_taxi_stand_locations-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for taxi_stands
 - data quality report
@@ -43,6 +43,6 @@ domain: taxi
 
 | column | type | null rate | distinct | example |
 |---|---|---|---|---|
-| `location_name` | String | 0.0% | 147 | Umm suqeim Street |
-| `longitude` | Float64 | 0.0% | 35 | 55.22 |
-| `latitude` | Float64 | 0.0% | 35 | 25.11 |
+| `location_name` | String | 0.0% | 147 | Al Thaniya Street Barsha Heights |
+| `longitude` | Float64 | 0.0% | 35 | 55.18 |
+| `latitude` | Float64 | 0.0% | 35 | 25.1 |

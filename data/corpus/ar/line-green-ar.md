@@ -4,7 +4,7 @@ title: Green — المحطات ومناطق الأجرة
 lang: ar
 service_category: network_reference
 source_url: https://www.dubaipulse.gov.ae/data/rta-rail/rta_metro_stations_gis-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - dim_station (gold layer)
 generated: true

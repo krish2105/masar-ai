@@ -4,7 +4,7 @@ title: 'Dataset: routes_stops'
 lang: en
 service_category: data_dictionary
 source_url: https://www.dubaipulse.gov.ae/data/rta-public-transport/rta_public_transportation_routes_stops-open
-retrieved_date: '2026-07-23'
+retrieved_date: '2026-07-24'
 grounded_in:
 - bronze manifest for routes_stops
 - data quality report
