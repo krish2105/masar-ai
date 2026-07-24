@@ -172,10 +172,18 @@ _OUT_OF_SCOPE = [
     (r"\bwrite\s+(me\s+)?(a\s+)?(poem|essay|story|code|script)\b", "scope.generic_generation"),
 ]
 
+# In-scope vocabulary. If none of these appears, the query is escalated as
+# possibly out of scope. It must therefore include every service the corpus can
+# actually answer — otherwise a question Masar *can* answer (because a service
+# document was added for it) gets flagged out of scope and never reaches
+# retrieval. That is exactly what happened to "what documents do I need to renew
+# a driving licence": no word here matched, so it was escalated and the local
+# model rejected it, while the licence-renewal service doc sat unused.
 _TRANSPORT_TERMS = re.compile(
     r"\b(metro|bus|tram|taxi|nol|salik|rta|station|stop|route|fare|zone|ridership|"
-    r"transport|commute|travel|marine|abra|ferry|line|trip|journey|توصيل|مترو|"
-    r"حافلة|باص|ترام|تاكسي|نول|سالك|محطة|خط|أجرة|رحلة|مواصلات)\b",
+    r"transport|commute|travel|marine|abra|ferry|line|trip|journey|"
+    r"licen[cs]e|driving|permit|fine|toll|parking|resident|commuting|توصيل|مترو|"
+    r"حافلة|باص|ترام|تاكسي|نول|سالك|محطة|خط|أجرة|رحلة|مواصلات|رخصة|قيادة|مخالفة)\b",
     re.IGNORECASE,
 )
 

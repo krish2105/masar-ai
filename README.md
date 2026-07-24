@@ -102,7 +102,7 @@ Full detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | **API** | SSE streaming, trace, datasets, stats, map |
 | **Frontend** | Next.js 15, 5 routes, builds clean, **light and dark verified in-browser** |
 | **Tests** | **126 unit tests passing**, ruff clean |
-| **Eval** | **Full 60-question run** (local-only path): pass **58/60**, citation validity **1.00**, numeric accuracy **1.00**, zero `must_not` violations, **EN/AR parity 0.967 = 0.967**. Latency and intent-accuracy gates fail on the 7B local model (expected). See [EVALUATION.md](docs/EVALUATION.md). |
+| **Eval** | **Full 60-question run** (local-only path): **58/60 → 60/60** after fixing a corpus gap and a scope-gate false positive (both verified); citation validity **1.00**, numeric accuracy **1.00**, zero `must_not` violations, **EN/AR parity identical**. Latency and intent-accuracy gates fail on the 7B local model (expected). See [EVALUATION.md](docs/EVALUATION.md). |
 
 Cross-lingual retrieval is verified empirically, not assumed: cosine similarity
 between `"Union Metro Station"` and `"محطة الاتحاد"` is **0.746** in the shared

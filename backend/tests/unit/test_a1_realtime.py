@@ -119,6 +119,41 @@ class TestJourneyDuration:
         assert result.reason != "realtime_unavailable"
 
 
+class TestServiceQuestionsAreInScope:
+    """Regression: the 60-question eval had licence-renewal questions fail
+    because they contain no transport keyword, so the scope gate escalated them
+    and the local model rejected them as out of scope — while the licence-renewal
+    service document sat unused. Every service the corpus can answer must be
+    recognised as in scope."""
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "What documents do I need to renew a Dubai driving licence?",
+            "ما المستندات المطلوبة لتجديد رخصة القيادة؟",
+            "How do I dispute a traffic fine in Dubai?",
+            "كيف أعترض على مخالفة مرورية في دبي؟",
+            "I'm a new resident. What do I need to set up for daily commuting?",
+        ],
+    )
+    def test_service_questions_are_not_flagged_out_of_scope(
+        self, guard: GuardrailAgent, question: str
+    ) -> None:
+        result = guard.check_rules(question)
+        assert result.verdict != "escalate", (
+            f"{question!r} is a service Masar has a corpus document for, but the "
+            f"scope gate flagged it for out-of-scope escalation. reason={result.reason!r}"
+        )
+        assert result.reason != "out_of_scope"
+
+    def test_licence_renewal_is_not_mistaken_for_a_transaction(self, guard: GuardrailAgent) -> None:
+        """Asking what documents a renewal needs is informational, not a request
+        to perform the renewal — it must not hit the transaction guard."""
+        result = guard.check_rules("What documents do I need to renew a Dubai driving licence?")
+        assert result.verdict == "allow"
+        assert "transaction" not in result.reason
+
+
 class TestAnswerableQuestionsStillPass:
     @pytest.mark.parametrize(
         "question",

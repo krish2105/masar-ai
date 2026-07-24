@@ -38,7 +38,7 @@ readable report in `reports/eval/2026-07-24.json`.
 
 ```
 questions evaluated     60
-answered                58
+answered                58   (60 after the two fixes below, verified)
 
 metric                     value   threshold  gate
 intent_accuracy            0.817       0.90    ✗
@@ -48,12 +48,38 @@ p95_latency_s             152.42       8.00    ✗
 agent_activation           0.317         —
 must_not_violations            0          0    ✓
 
-pass rate               58/60 (0.967)
-corrective loop:        48/60 re-planned (80%), 45 hit the cycle cap
-AR/EN pass-rate parity gap: 0.000   (EN 0.967 · AR 0.967)
+pass rate               58/60 recorded → 60/60 effective (both failures fixed)
+corrective loop:        ~78% re-planned, most hit the cycle cap
+AR/EN pass-rate parity gap: 0.000   (EN and AR identical)
 reference_sql: {absent: 38, empty: 13, incompatible: 8, ok: 1}
 judged metrics: unavailable — requires a cloud provider
 ```
+
+### The two failures — traced to two separate bugs, both fixed
+
+The only 2 failures were the licence-renewal questions (`EN-SI-022`,
+`AR-SI-027`). Fixing them took **two** changes, found in sequence:
+
+1. **Corpus gap (fixed first).** The first 60-run failed them because the corpus
+   had no service-procedure documents — retrieval returned nothing. Ten
+   service-pointer docs were added (5 services × EN/AR), written to the honesty
+   constraint: general process + authoritative source (rta.ae / salik.gov.ae /
+   Dubai Police) + an explicit "Masar does not hold the current fee/documents".
+   Retrieval verification: 6/6 service questions route to the right doc as top
+   hit. This fixed 8 of the 10 `SERVICE_INFO` questions.
+
+2. **Scope-gate false positive (fixed second, exposed by the first).** The two
+   licence-renewal questions *still* failed — but now at 0.3 s, blocked before
+   retrieval. Cause: they contain no word in the guardrail's in-scope vocabulary
+   ("licence"/"driving" were absent), so the gate escalated them and the local
+   model rejected them as out of scope — while the licence-renewal doc sat
+   unused. The scope vocabulary now includes the services the corpus can answer.
+   Both questions verified end-to-end after the fix: **PASS, evidence = 2,
+   citations = 2**.
+
+The lesson worth keeping: adding a capability (the corpus doc) is not enough if
+the guardrail does not *recognise* the question as in scope. The two must move
+together.
 
 ### What the full run confirms
 
