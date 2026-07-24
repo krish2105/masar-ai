@@ -16,7 +16,7 @@ export function Nav() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4">
         <Link href="/" className="flex items-baseline gap-2 shrink-0" aria-label="Masar AI home">
           <span
             className="text-[1.05rem] font-bold tracking-[0.06em]"
@@ -39,7 +39,7 @@ export function Nav() {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-[0.82rem] font-medium transition-colors",
+                  "rounded-lg px-2.5 py-1.5 text-[0.82rem] font-medium transition-colors sm:px-3",
                   active
                     ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                     : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",

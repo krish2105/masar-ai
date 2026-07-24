@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, Square, PanelRightOpen } from "lucide-react";
 import { AgentRail } from "@/components/AgentRail";
 import { ChatMessage } from "@/components/ChatMessage";
 import { EvidencePanel } from "@/components/EvidencePanel";
+import { MobileEvidenceSheet } from "@/components/MobileEvidenceSheet";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { ExampleTrace } from "@/components/ExampleTrace";
 import { streamChat, fetchStations } from "@/lib/api";
 import type { AgentEvent, Citation, Message, StationMarker } from "@/lib/types";
 import { isArabic } from "@/lib/utils";
@@ -28,10 +31,12 @@ export default function ChatPage() {
   const [citations, setCitations] = useState<Citation[]>([]);
   const [stations, setStations] = useState<StationMarker[]>([]);
   const [activeCitation, setActiveCitation] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const sessionId = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const evidenceTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetchStations("Metro").then((data) => {
@@ -142,6 +147,22 @@ export default function ChatPage() {
         {/* The rail is pinned here, always visible — see AgentRail's docstring. */}
         <AgentRail events={agents} running={running} replanGaps={replanGaps} />
 
+        <ConnectionBanner />
+
+        {/* Mobile only: the evidence + map live in a bottom sheet, not a column. */}
+        <button
+          ref={evidenceTriggerRef}
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[0.78rem] font-medium text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] lg:hidden"
+        >
+          <PanelRightOpen size={14} />
+          Evidence &amp; map
+          {citations.length > 0 && (
+            <span className="chip chip-accent text-[0.62rem]">{citations.length}</span>
+          )}
+        </button>
+
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -186,7 +207,7 @@ export default function ChatPage() {
         </form>
       </section>
 
-      {/* ---- evidence + map ---- */}
+      {/* ---- evidence + map (desktop column) ---- */}
       <aside className="hidden min-h-0 lg:flex lg:flex-[4] lg:min-w-[22rem] lg:max-w-[30rem]">
         <EvidencePanel
           citations={citations}
@@ -194,6 +215,19 @@ export default function ChatPage() {
           activeCitation={activeCitation}
         />
       </aside>
+
+      {/* ---- evidence + map (mobile bottom sheet) ---- */}
+      <MobileEvidenceSheet
+        open={sheetOpen}
+        onClose={() => {
+          setSheetOpen(false);
+          // Restore focus to the trigger the sheet came from (WCAG 2.4.3).
+          evidenceTriggerRef.current?.focus();
+        }}
+        citations={citations}
+        stations={stations}
+        activeCitation={activeCitation}
+      />
     </main>
   );
 }
@@ -239,6 +273,10 @@ function EmptyState({ onPick }: { onPick: (query: string) => void }) {
           </motion.button>
         ))}
       </div>
+
+      {/* A real recorded run, so the corrective loop is visible before typing —
+          and so a cold backend still shows the product working. */}
+      <ExampleTrace />
 
       <AnimatePresence>
         <motion.p

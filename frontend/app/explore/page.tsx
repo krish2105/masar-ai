@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { MessageSquare, AlertTriangle } from "lucide-react";
 import { fetchStats } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 import { MODE_COLORS, formatCompact, formatNumber } from "@/lib/utils";
 
 interface Stats {
@@ -42,7 +43,7 @@ export default function ExplorePage() {
 
   if (error) {
     return (
-      <div className="grid flex-1 place-items-center p-8 text-center text-[var(--text-muted)]">
+      <div className="grid min-h-0 flex-1 place-items-center overflow-y-auto p-8 text-center text-[var(--text-muted)]">
         <div>
           <p className="font-medium">Could not reach the warehouse.</p>
           <p className="mt-1 text-[0.82rem] text-[var(--text-faint)]">
@@ -56,7 +57,7 @@ export default function ExplorePage() {
 
   if (!stats) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] flex-1 space-y-3 p-4">
+      <div className="mx-auto w-full max-w-[1400px] min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {[0, 1, 2].map((i) => (
           <div key={i} className="shimmer h-56 rounded-xl" />
         ))}
@@ -72,7 +73,7 @@ export default function ExplorePage() {
   }));
 
   return (
-    <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-4 p-4">
+    <main className="mx-auto w-full max-w-[1400px] min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
       <header>
         <h1 className="text-[var(--text-step-2)] font-semibold">Network analytics</h1>
         <p className="mt-1 max-w-3xl text-[0.82rem] leading-relaxed text-[var(--text-muted)]">
@@ -83,12 +84,12 @@ export default function ExplorePage() {
 
       {/* ---- headline tiles ---- */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label="Stations held" value={formatNumber(sum(modes.map((m) => m.count)))} hint="across four modes" />
-        <Tile label="Routes held" value={formatNumber(sum(stats.routes_by_mode.map(([, n]) => n)))} />
-        <Tile label="Indexed chunks" value={formatNumber(stats.indexed_chunks)} hint="documents + row summaries" />
+        <Tile label="Stations held" value={sum(modes.map((m) => m.count))} hint="across four modes" />
+        <Tile label="Routes held" value={sum(stats.routes_by_mode.map(([, n]) => n))} />
+        <Tile label="Indexed chunks" value={stats.indexed_chunks} hint="documents + row summaries" />
         <Tile
           label="Non-comparable periods"
-          value={formatNumber(stats.non_comparable_periods)}
+          value={stats.non_comparable_periods}
           hint="excluded from every total"
           warn
         />
@@ -243,7 +244,7 @@ function Tile({
   warn,
 }: {
   label: string;
-  value: string;
+  value: number;
   hint?: string;
   warn?: boolean;
 }) {
@@ -259,7 +260,7 @@ function Tile({
         className="mt-1 text-[1.5rem] font-semibold tabular-nums leading-none"
         style={{ color: warn ? "var(--loop)" : "var(--text)" }}
       >
-        {value}
+        <CountUp value={value} format={formatNumber} />
       </p>
       {hint && <p className="mt-1 text-[0.68rem] text-[var(--text-faint)]">{hint}</p>}
     </motion.div>

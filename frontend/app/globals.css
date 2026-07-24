@@ -183,7 +183,13 @@ body {
   background: var(--text-faint);
 }
 
-/* ---- utilities ------------------------------------------------------------ */
+/* ---- component classes -----------------------------------------------------
+   Kept in @layer components so Tailwind's utilities (display, font-size,
+   spacing…) reliably override them. Unlayered, `.chip { display: inline-flex }`
+   would beat `hidden sm:inline`, silently defeating every responsive display or
+   size utility applied to a chip — which is exactly how the nav's "archived"
+   badge leaked onto mobile and forced a horizontal scroll. */
+@layer components {
 .surface {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -222,18 +228,10 @@ body {
 
 /* The corrective-loop badge. Deliberately the only pulsing element in the UI:
    when everything else is still, a single pulse is unmissable. */
-@keyframes loop-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--loop-soft); }
-  50% { box-shadow: 0 0 0 5px transparent; }
-}
 .chip-loop-active {
   animation: loop-pulse 1.8s var(--ease-out-quart) infinite;
 }
 
-@keyframes shimmer {
-  0% { background-position: -600px 0; }
-  100% { background-position: 600px 0; }
-}
 .shimmer {
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
   background-size: 600px 100%;
@@ -259,6 +257,18 @@ body {
 .prose-masar table { width: 100%; font-size: 0.85em; margin: 0.5rem 0; }
 .prose-masar th { text-align: start; font-weight: 650; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
 .prose-masar td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+}
+
+/* Keyframes live OUTSIDE @layer — Tailwind v4's layer parser rejects a nested
+   @keyframes (it reads as an unclosed block), and keyframes are global anyway. */
+@keyframes loop-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--loop-soft); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
 
 /* ---- reduced motion: the single most important accessibility rule --------- */
 @media (prefers-reduced-motion: reduce) {

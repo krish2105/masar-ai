@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { Database, FileText, MapPin, Calculator, Radio, ExternalLink, AlertTriangle } from "lucide-react";
 import type { Citation, StationMarker } from "@/lib/types";
-import { MapPanel } from "./MapPanel";
 import { cn } from "@/lib/utils";
+
+/**
+ * MapLibre and its stylesheet are ~heavy and WebGL-dependent. Loading them
+ * eagerly would put them in the home route's first bundle even though the Map
+ * tab is not the default view. Deferring the whole panel behind next/dynamic
+ * keeps the initial payload small — the map's code only arrives when a visitor
+ * actually opens the tab. This is the single biggest home-route Lighthouse win.
+ */
+const MapPanel = dynamic(() => import("./MapPanel").then((m) => m.MapPanel), {
+  ssr: false,
+  loading: () => (
+    <div className="shimmer h-full min-h-[18rem]" aria-label="Loading map" role="status" />
+  ),
+});
 
 const ICONS: Record<string, typeof Database> = {
   document: FileText,

@@ -60,7 +60,7 @@ export default function DataPage() {
 
   if (error) {
     return (
-      <div className="grid flex-1 place-items-center p-8 text-center text-[var(--text-muted)]">
+      <div className="grid min-h-0 flex-1 place-items-center overflow-y-auto p-8 text-center text-[var(--text-muted)]">
         No ingestion manifest found. Run <code className="mx-1">make ingest</code> first.
       </div>
     );
@@ -68,7 +68,7 @@ export default function DataPage() {
 
   if (!ledger) {
     return (
-      <div className="mx-auto w-full max-w-[1200px] flex-1 space-y-2 p-4">
+      <div className="mx-auto w-full max-w-[1200px] min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="shimmer h-20 rounded-lg" />
         ))}
@@ -77,7 +77,7 @@ export default function DataPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] flex-1 space-y-4 p-4">
+    <main className="mx-auto w-full max-w-[1200px] min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
       <header>
         <h1 className="text-[var(--text-step-2)] font-semibold">Data provenance</h1>
         <p className="mt-1 max-w-3xl text-[0.82rem] leading-relaxed text-[var(--text-muted)]">

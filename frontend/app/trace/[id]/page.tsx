@@ -46,7 +46,7 @@ export default function TracePage({ params }: { params: Promise<{ id: string }> 
 
   if (missing) {
     return (
-      <div className="grid flex-1 place-items-center p-8 text-center">
+      <div className="grid min-h-0 flex-1 place-items-center overflow-y-auto p-8 text-center">
         <div className="flex items-center gap-2 text-[var(--text-muted)]">
           <AlertCircle size={16} />
           <span>No trace found for turn <code className="text-[0.85rem]">{id}</code>.</span>
@@ -57,7 +57,7 @@ export default function TracePage({ params }: { params: Promise<{ id: string }> 
 
   if (!trace) {
     return (
-      <div className="mx-auto w-full max-w-4xl flex-1 space-y-2 p-4">
+      <div className="mx-auto w-full max-w-4xl min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="shimmer h-14 rounded-lg" />
         ))}
@@ -78,7 +78,7 @@ export default function TracePage({ params }: { params: Promise<{ id: string }> 
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 space-y-4 p-4">
+    <main className="mx-auto w-full max-w-4xl min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[var(--text-step-2)] font-semibold">Agent trace</h1>
