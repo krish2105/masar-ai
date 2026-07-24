@@ -51,7 +51,9 @@ class TestCoverageApplicability:
     """The defect that guaranteed every Arabic question re-planned."""
 
     def test_arabic_question_against_english_evidence_abstains(self) -> None:
-        score = _coverage_score("ما هي خطوط الحافلات التي تخدم محطة مترو الاتحاد؟", [UNION_EN, ROUTE_EN])
+        score = _coverage_score(
+            "ما هي خطوط الحافلات التي تخدم محطة مترو الاتحاد؟", [UNION_EN, ROUTE_EN]
+        )
         assert score.applicable is False, (
             "Lexical overlap has no signal across scripts. Reporting a number "
             "here — 0.0 — is what forced every Arabic question to the cycle cap."
@@ -77,7 +79,7 @@ class TestCoverageApplicability:
 
 class TestCoverageFramingWords:
     def test_question_framing_words_do_not_count_against_coverage(self) -> None:
-        """"options", "reach", "using" are how a person phrases a question, not
+        """ "options", "reach", "using" are how a person phrases a question, not
         content the evidence must echo."""
         score = _coverage_score(
             "What are my options to reach Expo City using public transport?",
@@ -122,7 +124,9 @@ class TestRecencyApplicability:
         assert score.applicable is True
 
     def test_time_sensitive_question_with_no_dates_scores_low(self) -> None:
-        score = _recency_score("What is the current ridership trend?", [ev("Some prose with no dates.")])
+        score = _recency_score(
+            "What is the current ridership trend?", [ev("Some prose with no dates.")]
+        )
         assert score.applicable is True
         assert score.value < DEFAULT_THRESHOLD
 

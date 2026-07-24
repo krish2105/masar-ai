@@ -68,9 +68,7 @@ class TestLiveVehicleIsNotAnswerable:
             "Show me live bus locations",
         ],
     )
-    def test_live_questions_are_redirected(
-        self, guard: GuardrailAgent, question: str
-    ) -> None:
+    def test_live_questions_are_redirected(self, guard: GuardrailAgent, question: str) -> None:
         result = guard.check_rules(question)
         assert result.reason == "realtime_unavailable", (
             f"{question!r} asks about live state, which RTA does not publish. "
@@ -98,9 +96,7 @@ class TestJourneyDuration:
             "How many minutes from Union to Airport Terminal 3?",
         ],
     )
-    def test_duration_questions_are_redirected(
-        self, guard: GuardrailAgent, question: str
-    ) -> None:
+    def test_duration_questions_are_redirected(self, guard: GuardrailAgent, question: str) -> None:
         result = guard.check_rules(question)
         assert result.reason == "realtime_unavailable", (
             f"{question!r} asks for a journey duration. Masar has no timetables "
@@ -134,9 +130,7 @@ class TestAnswerableQuestionsStillPass:
             "أي محطة مترو هي الأكثر ازدحاماً؟",
         ],
     )
-    def test_core_questions_are_allowed(
-        self, guard: GuardrailAgent, question: str
-    ) -> None:
+    def test_core_questions_are_allowed(self, guard: GuardrailAgent, question: str) -> None:
         result = guard.check_rules(question)
         assert result.verdict in ("allow", "escalate"), (
             f"{question!r} is a core capability. Got {result.verdict} / {result.reason}"
